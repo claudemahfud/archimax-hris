@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // karyawan & penilaianKpi: dipakai langsung oleh app (tanpa Firebase Auth),
+    // jadi read/write dibuka supaya form Tambah/Edit Karyawan & Form Penilaian KPI berfungsi.
+    match /karyawan/{docId} {
+      allow read, write: if true;
+    }
+    match /penilaianKpi/{docId} {
+      allow read, write: if true;
+    }
+
+    // settings (kode akses HRD & HOD): app HANYA butuh READ untuk verifikasi PIN.
+    // Write diblokir dari client — isi/ubah PIN cuma lewat tab "Data" di Firebase Console.
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
