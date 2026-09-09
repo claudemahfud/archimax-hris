@@ -10,8 +10,8 @@ export default function Landing() {
           src={LOGO_ARCHIMAX_URL}
           alt="Logo PT Archimax Architect Indonesia"
           style={{
-            width: 72, height: 72, objectFit: 'contain', borderRadius: 16,
-            margin: '0 auto 16px', display: 'block',
+            width: '100%', maxWidth: 260, height: 'auto', objectFit: 'contain',
+            margin: '0 auto 20px', display: 'block',
           }}
         />
         <h1>Archimax HRD &amp; KPI Portal</h1>

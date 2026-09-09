@@ -12,7 +12,7 @@ export function PortalNav({ title, items, onKeluar }: { title: string; items: Na
       <img
         src={LOGO_ARCHIMAX_URL}
         alt="Logo PT Archimax Architect Indonesia"
-        style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 8, marginRight: 4 }}
+        style={{ height: 38, width: 'auto', maxWidth: 140, objectFit: 'contain', marginRight: 4 }}
       />
       <span className="nav-brand">{title}</span>
       <button
