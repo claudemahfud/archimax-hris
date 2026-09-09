@@ -4,8 +4,12 @@ export const ROUTES = {
   HRD_DASHBOARD: '/hrd/dashboard',
   HRD_KARYAWAN: '/hrd/karyawan',
   HRD_PENILAIAN: '/hrd/penilaian',
+  HRD_IMPORT: '/hrd/import-excel',
+  HRD_PROFIL_PERUSAHAAN: '/hrd/profil-perusahaan',
   HOD_AKSES: '/hod/akses',
   HOD_MONITORING: '/hod/monitoring',
   HOD_PENILAIAN: '/hod/penilaian',
   GANTI_KODE_AKSES: '/ganti-kode-akses',
+  RAPOR: '/rapor/:id',
+  raporUrl: (id: string) => `/rapor/${id}`,
 } as const;

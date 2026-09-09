@@ -92,19 +92,21 @@ export default function Monitoring() {
           ) : trendLabels.length === 0 ? (
             <p>Belum ada data penilaian KPI untuk divisi ini.</p>
           ) : (
-            <Line
-              data={{
-                labels: trendLabels,
-                datasets: [{
-                  label: 'Rata-rata Skor (Hard Skill + Kedisiplinan)',
-                  data: trendData,
-                  borderColor: '#FF7A00',
-                  backgroundColor: 'rgba(255,122,0,0.15)',
-                  tension: 0.3,
-                }],
-              }}
-              options={{ responsive: true, plugins: { legend: { display: true } } }}
-            />
+            <div className="chart-wrap">
+              <Line
+                data={{
+                  labels: trendLabels,
+                  datasets: [{
+                    label: 'Rata-rata Skor (Hard Skill + Kedisiplinan)',
+                    data: trendData,
+                    borderColor: '#FF7A00',
+                    backgroundColor: 'rgba(255,122,0,0.15)',
+                    tension: 0.3,
+                  }],
+                }}
+                options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true } } }}
+              />
+            </div>
           )}
         </div>
 

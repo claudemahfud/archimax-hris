@@ -13,6 +13,8 @@ const NAV_ITEMS = [
   { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik' },
   { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan' },
   { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD' },
+  { to: ROUTES.HRD_IMPORT, label: 'Import Excel' },
+  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan' },
 ];
 
 export default function Penilaian() {

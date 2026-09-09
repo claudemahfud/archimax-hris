@@ -36,6 +36,9 @@ export interface Karyawan {
   pendidikanTerakhir: string;
   levelUser: LevelUser;
   fotoUrl?: string;
+  // Kode akses (PIN) untuk buka link Rapor Online pribadi karyawan (/rapor/:id).
+  // Default kalau kosong: 6 digit terakhir NIK (lihat kodeAksesRaporDefault di firestore.ts).
+  kodeAksesRapor?: string;
   createdAt?: number;
   updatedAt?: number;
 }
@@ -70,4 +73,24 @@ export interface ToastMessage {
   id: string;
   type: 'success' | 'error';
   message: string;
+}
+
+// Info umum perusahaan yang SAMA untuk semua karyawan — disimpan satu dokumen saja
+// (settings/companyInfo), ditampilkan sebagai halaman-halaman umum di Rapor Online,
+// bukan diulang per karyawan seperti di spreadsheet lama.
+export interface CompanyInfo {
+  namaPerusahaan: string;
+  alamat: string;
+  kontak: string;
+  visiMisi: string;
+  tataTertib: string; // gabungan "Peraturan Punishment" (ringan + berat)
+  kebijakanReward: string;
+  updatedAt?: number;
+}
+
+// Hasil parse satu file Excel karyawan (format "Data Diri Karyawan" + "RAPORT-KPI").
+export interface HasilImportExcel {
+  karyawan: Omit<Karyawan, 'id' | 'createdAt' | 'updatedAt'>;
+  riwayatKpi: PenilaianKpiForm[];
+  peringatan: string[]; // kolom/sheet yang tidak ditemukan atau perlu dicek manual
 }

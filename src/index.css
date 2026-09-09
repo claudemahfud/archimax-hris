@@ -31,9 +31,13 @@
   --shadow-brand: 0 8px 20px rgba(255, 122, 0, 0.28);
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-html { -webkit-text-size-adjust: 100%; }
+button, a, input, select, textarea, .btn, .nav-link, .nav-toggle { touch-action: manipulation; }
+
+html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+body { overflow-x: hidden; }
+img { max-width: 100%; }
 
 body, input, select, textarea, button {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -74,7 +78,6 @@ a:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; bor
   transition: box-shadow 220ms ease, transform 220ms ease;
 }
 @media (min-width: 640px) { .card { padding: 26px 28px; } }
-.card:has(table):hover, .card:has(form):hover { box-shadow: var(--shadow-card); }
 
 .btn {
   min-height: 46px;
@@ -94,7 +97,6 @@ a:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; bor
   justify-content: center;
   gap: 8px;
 }
-.btn:hover { filter: brightness(1.06); transform: translateY(-2px); box-shadow: 0 12px 26px rgba(255, 122, 0, 0.34); }
 .btn:active { transform: translateY(0) scale(0.98); filter: brightness(0.98); }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; filter: none; }
 .btn:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; }
@@ -104,7 +106,6 @@ a:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; bor
   border: 1.5px solid var(--orange-200, var(--grey-light));
   box-shadow: none;
 }
-.btn-secondary:hover { background: var(--orange-50); border-color: var(--orange-400); box-shadow: 0 4px 12px rgba(32,28,23,0.08); }
 
 .btn-google {
   background: var(--white); color: var(--text-main);
@@ -112,7 +113,6 @@ a:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; bor
   box-shadow: none;
   display: inline-flex; align-items: center; justify-content: center;
 }
-.btn-google:hover { background: var(--grey-bg); box-shadow: 0 4px 12px rgba(32,28,23,0.08); }
 
 .divider-or {
   display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--grey-medium); font-size: 0.85rem;
@@ -120,7 +120,7 @@ a:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; bor
 .divider-or::before, .divider-or::after { content: ''; flex: 1; height: 1px; background: var(--grey-light); }
 
 .link-muted { color: var(--grey-medium); font-weight: 600; font-size: 0.9rem; text-decoration: underline; }
-.link-muted:hover { color: var(--orange-700); }
+.link-muted:active { color: var(--orange-700); }
 
 /* ==== Navigasi Portal (mobile-friendly, sticky, hamburger di layar sempit) ==== */
 .nav-bar {
@@ -146,8 +146,8 @@ a:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; bor
   transition: background-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
   display: inline-flex; align-items: center; white-space: nowrap;
 }
-.nav-link:hover { background: var(--orange-50); color: var(--orange-700); }
 .nav-link.active { background: var(--gradient-brand); color: var(--white); box-shadow: 0 4px 12px rgba(255,122,0,0.28); }
+.nav-link:active:not(.active) { background: var(--orange-50); }
 .nav-link:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; }
 
 .nav-keluar {
@@ -165,7 +165,6 @@ a:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; bor
   cursor: pointer;
   color: var(--orange-700);
 }
-.nav-toggle:hover { background: var(--orange-50); }
 .nav-toggle:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; }
 
 @media (max-width: 720px) {
@@ -192,13 +191,24 @@ a:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; bor
   font-size: 1rem; min-height: 46px; background: var(--white); color: var(--text-main);
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
-.form-field input:hover, .form-field select:hover, .form-field textarea:hover { border-color: var(--orange-400); }
 .form-field textarea { min-height: 90px; white-space: pre-line; }
 .form-field input:focus-visible, .form-field select:focus-visible, .form-field textarea:focus-visible,
 .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
   outline: none; border-color: var(--orange-500); box-shadow: 0 0 0 3px rgba(255,122,0,0.16);
 }
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 20px; }
+.form-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px 20px; }
+.form-grid > * { min-width: 0; }
+.form-grid .span-2 { grid-column: span 2; }
+.form-grid .span-3 { grid-column: span 3; }
+.form-grid .span-4 { grid-column: span 4; }
+.form-grid .span-5 { grid-column: span 5; }
+.form-grid .span-6 { grid-column: span 6; }
+.form-grid .span-8 { grid-column: span 8; }
+.form-grid .span-12 { grid-column: span 12; }
+@media (max-width: 640px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid > * { grid-column: 1 / -1; }
+}
 
 .description-text, .content-text { white-space: pre-line; }
 
@@ -210,9 +220,8 @@ table.data-table th { background: var(--gradient-brand); color: var(--white); fo
 table.data-table th:first-child { border-top-left-radius: var(--radius-sm); }
 table.data-table th:last-child { border-top-right-radius: var(--radius-sm); }
 table.data-table tbody tr { transition: background-color 160ms ease; }
-table.data-table tbody tr:hover { background: var(--orange-50); }
+table.data-table tbody tr:active { background: var(--orange-50); }
 table.data-table tbody tr:nth-child(even) { background: rgba(247, 245, 242, 0.6); }
-table.data-table tbody tr:nth-child(even):hover { background: var(--orange-50); }
 
 /* ==== Spinner ==== */
 .spinner-wrap { display: flex; align-items: center; gap: 10px; padding: 24px 0; color: var(--grey-medium); }
@@ -237,6 +246,7 @@ table.data-table tbody tr:nth-child(even):hover { background: var(--orange-50); 
   display: flex; align-items: flex-start; gap: 10px; padding: 13px 15px; border-radius: var(--radius-sm);
   background: var(--white); box-shadow: 0 10px 28px rgba(32,28,23,0.16); border-left: 4px solid var(--success);
   animation: toast-in 220ms ease; width: 100%; max-width: 360px;
+  transition: transform 200ms ease, opacity 200ms ease;
 }
 .toast-error { border-left-color: var(--danger); }
 .toast-icon { margin-top: 2px; }
@@ -264,4 +274,67 @@ table.data-table tbody tr:nth-child(even):hover { background: var(--orange-50); 
   border-top: 4px solid transparent;
   border-image: var(--gradient-brand) 1;
   box-shadow: var(--shadow-card-hover);
+}
+
+/* ==== Export PDF A4 (Rapor Online) ==== */
+.cetak-header { display: none; }
+@media print {
+  @page { size: A4; margin: 14mm; }
+  .no-print { display: none !important; }
+  .cetak-header {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
+  }
+  .page { padding: 0; }
+  .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; page-break-inside: avoid; margin-bottom: 14px; }
+  body { background: #fff; }
+}
+
+/* ==== Optimasi Viewport Mobile ==== */
+/* Wrapper grafik: tinggi stabil di semua layar (Chart.js maintainAspectRatio: false
+   dipasangkan dengan ini), supaya grafik tidak gepeng/kepotong di layar sempit. */
+.chart-wrap { position: relative; width: 100%; height: 260px; }
+@media (min-width: 640px) { .chart-wrap { height: 320px; } }
+
+/* Toolbar tab + tombol aksi (mis. Export PDF di Rapor Online): di layar sempit ditumpuk
+   rapi jadi 1 kolom penuh lebar, bukan berdesakan/terpotong di ujung kanan. */
+.toolbar-wrap { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.toolbar-action { margin-left: auto; }
+@media (max-width: 640px) {
+  .toolbar-wrap { flex-direction: column; align-items: stretch; }
+  .toolbar-action { margin-left: 0; width: 100%; }
+  .page { padding: 14px 12px 60px; }
+  h3 { font-size: 0.78rem; }
+}
+
+/* Kolom Aksi (Edit/Hapus dsb) di tabel: tetap rapi kalau kolom sempit di layar kecil. */
+.table-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ==== Gesture Perangkat Touchscreen ==== */
+/* Area konten tab Rapor Online: bisa digeser kiri/kanan (JS) untuk pindah tab,
+   scroll vertikal halaman tetap jalan normal (pan-y). */
+.swipe-area { touch-action: pan-y; }
+
+/* Kartu toast bisa digeser (drag) untuk ditutup manual di touchscreen. */
+.toast-item { touch-action: pan-y; will-change: transform; }
+.toast-item.toast-dragging { transition: none; }
+
+/* Indikator titik tab aktif (dot) untuk memberi tahu ada gesture geser antar tab. */
+.swipe-dots { display: flex; gap: 6px; justify-content: center; margin: 10px 0 2px; }
+.swipe-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--grey-light); transition: background-color 200ms ease, transform 200ms ease; }
+.swipe-dot.active { background: var(--orange-500); transform: scale(1.3); }
+
+/* ==== Hover HANYA untuk perangkat dengan mouse (bukan touchscreen) ====
+   Mencegah "sticky hover" di HP/tablet: tanpa media query ini, style :hover
+   bisa nyangkut nempel setelah disentuh sampai user tap elemen lain. */
+@media (hover: hover) and (pointer: fine) {
+  .card:has(table):hover, .card:has(form):hover { box-shadow: var(--shadow-card); }
+  .btn:hover { filter: brightness(1.06); transform: translateY(-2px); box-shadow: 0 12px 26px rgba(255, 122, 0, 0.34); }
+  .btn-secondary:hover { background: var(--orange-50); border-color: var(--orange-400); box-shadow: 0 4px 12px rgba(32,28,23,0.08); }
+  .btn-google:hover { background: var(--grey-bg); box-shadow: 0 4px 12px rgba(32,28,23,0.08); }
+  .link-muted:hover { color: var(--orange-700); }
+  .nav-link:hover { background: var(--orange-50); color: var(--orange-700); }
+  .nav-toggle:hover { background: var(--orange-50); }
+  .form-field input:hover, .form-field select:hover, .form-field textarea:hover { border-color: var(--orange-400); }
+  table.data-table tbody tr:hover { background: var(--orange-50); }
+  table.data-table tbody tr:nth-child(even):hover { background: var(--orange-50); }
 }

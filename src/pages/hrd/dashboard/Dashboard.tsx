@@ -19,6 +19,8 @@ const NAV_ITEMS = [
   { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik' },
   { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan' },
   { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD' },
+  { to: ROUTES.HRD_IMPORT, label: 'Import Excel' },
+  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan' },
 ];
 
 export default function Dashboard() {
@@ -93,19 +95,21 @@ export default function Dashboard() {
           ) : trendLabels.length === 0 ? (
             <p>Belum ada data penilaian KPI untuk ditampilkan.</p>
           ) : (
-            <Line
-              data={{
-                labels: trendLabels,
-                datasets: [{
-                  label: 'Rata-rata Skor (Hard Skill + Kedisiplinan)',
-                  data: trendData,
-                  borderColor: '#FF7A00',
-                  backgroundColor: 'rgba(255,122,0,0.15)',
-                  tension: 0.3,
-                }],
-              }}
-              options={{ responsive: true, plugins: { legend: { display: true } } }}
-            />
+            <div className="chart-wrap">
+              <Line
+                data={{
+                  labels: trendLabels,
+                  datasets: [{
+                    label: 'Rata-rata Skor (Hard Skill + Kedisiplinan)',
+                    data: trendData,
+                    borderColor: '#FF7A00',
+                    backgroundColor: 'rgba(255,122,0,0.15)',
+                    tension: 0.3,
+                  }],
+                }}
+                options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true } } }}
+              />
+            </div>
           )}
         </div>
 

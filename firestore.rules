@@ -19,7 +19,9 @@ service cloud.firestore {
     // Console.
     match /settings/{docId} {
       allow read: if true;
-      allow write: if docId == 'aksesHrd' || docId == 'aksesHod';
+      // companyInfo: konten umum (Visi Misi, Tata Tertib, Kebijakan Reward) yang diedit HRD
+      // lewat halaman "Profil Perusahaan" dan dibaca publik di semua halaman Rapor Online.
+      allow write: if docId == 'aksesHrd' || docId == 'aksesHod' || docId == 'companyInfo';
     }
   }
 }

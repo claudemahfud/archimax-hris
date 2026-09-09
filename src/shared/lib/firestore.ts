@@ -1,9 +1,9 @@
 import {
-  collection, doc, getDoc, getDocs, addDoc, updateDoc, query, where,
-  orderBy, setDoc, serverTimestamp, Timestamp,
+  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where,
+  orderBy, setDoc, serverTimestamp, Timestamp, writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Karyawan, PenilaianKpi, PenilaianKpiForm } from '../types';
+import type { Karyawan, PenilaianKpi, PenilaianKpiForm, CompanyInfo, HasilImportExcel } from '../types';
 
 // ============================================================
 // SECTION: Karyawan (Master Data)
@@ -42,6 +42,65 @@ export async function tambahKaryawan(data: Omit<Karyawan, 'id' | 'createdAt' | '
 export async function editKaryawan(id: string, data: Partial<Karyawan>): Promise<void> {
   const ref = doc(db, KARYAWAN_COL, id);
   await updateDoc(ref, { ...data, updatedAt: Date.now() });
+}
+
+// Hapus karyawan + seluruh riwayat KPI miliknya (supaya tidak ada data yatim di koleksi penilaianKpi).
+export async function hapusKaryawan(id: string): Promise<void> {
+  const riwayat = await listRiwayatKpi(id);
+  const batch = writeBatch(db);
+  for (const r of riwayat) batch.delete(doc(db, PENILAIAN_COL, r.id));
+  batch.delete(doc(db, KARYAWAN_COL, id));
+  await batch.commit();
+}
+
+export async function cariKaryawanByNip(nip: string): Promise<Karyawan | null> {
+  if (!nip) return null;
+  const col = collection(db, KARYAWAN_COL);
+  const snap = await getDocs(query(col, where('nip', '==', nip)));
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) };
+}
+
+// ============================================================
+// SECTION: Import Excel (satu-jalan migrasi dari spreadsheet lama)
+// ============================================================
+// Upsert by NIP: karyawan baru → tambahKaryawan; NIP sudah ada → update data terbaru
+// (foto & kodeAksesRapor yang sudah diisi manual TIDAK ditimpa kalau file baru kosong).
+// Riwayat KPI dari sheet RAPORT-KPI ditambahkan sebagai dokumen baru per periode, dilewati
+// kalau periode yang sama untuk karyawan itu sudah pernah diimpor (supaya aman diulang-ulang).
+export async function importSatuKaryawan(hasil: HasilImportExcel): Promise<{ id: string; jumlahRiwayatBaru: number }> {
+  const existing = await cariKaryawanByNip(hasil.karyawan.nip);
+  let id: string;
+  if (existing) {
+    const patch: Partial<Karyawan> = { ...hasil.karyawan };
+    if (!hasil.karyawan.fotoUrl) delete patch.fotoUrl;
+    if (!hasil.karyawan.kodeAksesRapor) delete patch.kodeAksesRapor;
+    await editKaryawan(existing.id, patch);
+    id = existing.id;
+  } else {
+    id = await tambahKaryawan(hasil.karyawan);
+  }
+
+  const riwayatAda = await listRiwayatKpi(id);
+  const periodeAda = new Set(riwayatAda.map((r) => r.periodeMinggu));
+  const batch = writeBatch(db);
+  let jumlahBaru = 0;
+  for (const r of hasil.riwayatKpi) {
+    if (periodeAda.has(r.periodeMinggu)) continue;
+    const ref = doc(collection(db, PENILAIAN_COL));
+    batch.set(ref, { ...r, karyawanId: id, dinilaiOleh: 'HRD', timestamp: Date.now() });
+    jumlahBaru++;
+  }
+  if (jumlahBaru > 0) await batch.commit();
+
+  return { id, jumlahRiwayatBaru: jumlahBaru };
+}
+
+/** PIN default kalau HRD belum set kodeAksesRapor manual: 6 digit terakhir NIK. */
+export function kodeAksesRaporDefault(k: Pick<Karyawan, 'nik'>): string {
+  const digit = (k.nik || '').replace(/\D/g, '');
+  return digit.slice(-6) || '000000';
 }
 
 // ============================================================
@@ -117,4 +176,38 @@ export async function getSuperadminCredentials(): Promise<{ username: string; pa
 
 export async function setSuperadminCredentials(username: string, password: string): Promise<void> {
   await setDoc(doc(db, SETTINGS_COL, 'superadmin'), { username, password }, { merge: true });
+}
+
+// ============================================================
+// SECTION: Company Info (Visi Misi, Tata Tertib, Kebijakan Reward — SATU dokumen untuk semua
+// karyawan, ditampilkan di Rapor Online. Sengaja tidak diulang per karyawan seperti di
+// spreadsheet lama.)
+// ============================================================
+const COMPANY_INFO_DEFAULT: CompanyInfo = {
+  namaPerusahaan: 'PT ARCHIMAX ARCHITECT INDONESIA',
+  alamat: 'Jl. KH. Agus Salim 01/04 Lingkungan Gambirejo Warungjayeng-Tanjunganom, Nganjuk 64483, Jawa Timur',
+  kontak: 'Tlp/WA: 082228944844 · Email: archimax.architect@gmail.com · Web: www.archimaxarchitect.com',
+  visiMisi: '',
+  tataTertib: '',
+  kebijakanReward: '',
+};
+
+export async function getCompanyInfo(): Promise<CompanyInfo> {
+  const snap = await getDoc(doc(db, SETTINGS_COL, 'companyInfo'));
+  if (!snap.exists()) return COMPANY_INFO_DEFAULT;
+  return { ...COMPANY_INFO_DEFAULT, ...(snap.data() as Partial<CompanyInfo>) };
+}
+
+export async function setCompanyInfo(data: Omit<CompanyInfo, 'updatedAt'>): Promise<void> {
+  await setDoc(doc(db, SETTINGS_COL, 'companyInfo'), { ...data, updatedAt: Date.now() }, { merge: true });
+}
+
+// ============================================================
+// SECTION: Rapor Online (halaman publik per karyawan, akses via link + PIN)
+// ============================================================
+// Catatan keamanan sama seperti PIN HRD/HOD lain di app ini (lihat README): verifikasi
+// berjalan di client. Data karyawan yang bisa dibaca lewat rapor dibatasi field yang memang
+// perlu ditampilkan di dalam komponen, bukan expose seluruh dokumen mentah tanpa filter.
+export async function getKaryawanUntukRapor(id: string): Promise<Karyawan | null> {
+  return getKaryawan(id);
 }
