@@ -35,6 +35,7 @@ export interface Karyawan {
   jumlahAnak: number;
   pendidikanTerakhir: string;
   levelUser: LevelUser;
+  fotoUrl?: string;
   createdAt?: number;
   updatedAt?: number;
 }

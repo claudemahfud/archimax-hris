@@ -118,29 +118,31 @@ export default function Monitoring() {
           ) : rekap.length === 0 ? (
             <p>Belum ada Staff terdaftar di divisi ini. Tambahkan lewat Kelola Karyawan (Master File HRD).</p>
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Nama Staff</th><th>Jabatan</th><th>Periode Terakhir</th>
-                  <th>Skor Hard Skill</th><th>Skor Kedisiplinan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rekap.map((r) => (
-                  <tr key={r.karyawan.id}>
-                    <td>{r.karyawan.namaLengkap}</td>
-                    <td>{r.karyawan.jabatan}</td>
-                    <td>{r.periode}</td>
-                    <td>{r.skorTerakhir.toFixed(2)}</td>
-                    <td>
-                      <span className={`badge ${r.skorKedisiplinan >= 80 ? 'badge-good' : 'badge-bad'}`}>
-                        {r.skorKedisiplinan.toFixed(2)}
-                      </span>
-                    </td>
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Nama Staff</th><th>Jabatan</th><th>Periode Terakhir</th>
+                    <th>Skor Hard Skill</th><th>Skor Kedisiplinan</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rekap.map((r) => (
+                    <tr key={r.karyawan.id}>
+                      <td>{r.karyawan.namaLengkap}</td>
+                      <td>{r.karyawan.jabatan}</td>
+                      <td>{r.periode}</td>
+                      <td>{r.skorTerakhir.toFixed(2)}</td>
+                      <td>
+                        <span className={`badge ${r.skorKedisiplinan >= 80 ? 'badge-good' : 'badge-bad'}`}>
+                          {r.skorKedisiplinan.toFixed(2)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

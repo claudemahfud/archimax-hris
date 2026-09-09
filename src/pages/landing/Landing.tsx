@@ -1,10 +1,19 @@
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../router/routePaths';
+import { LOGO_ARCHIMAX_URL } from '../../shared/constants/branding';
 
 export default function Landing() {
   return (
     <div className="gate-wrap">
       <div className="card gate-card">
+        <img
+          src={LOGO_ARCHIMAX_URL}
+          alt="Logo PT Archimax Architect Indonesia"
+          style={{
+            width: 72, height: 72, objectFit: 'contain', borderRadius: 16,
+            margin: '0 auto 16px', display: 'block',
+          }}
+        />
         <h1>Archimax HRD &amp; KPI Portal</h1>
         <p>PT Archimax Architect Indonesia — pilih portal yang ingin diakses.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>

@@ -119,29 +119,31 @@ export default function Dashboard() {
           ) : ranking.length === 0 ? (
             <p>Belum ada karyawan dengan Level User HOD terdaftar.</p>
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Nama HOD</th><th>Divisi</th><th>Periode Terakhir</th>
-                  <th>Skor Hard Skill</th><th>Skor Kedisiplinan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ranking.map((r) => (
-                  <tr key={r.karyawan.id}>
-                    <td>{r.karyawan.namaLengkap}</td>
-                    <td>{r.karyawan.divisi}</td>
-                    <td>{r.periode}</td>
-                    <td>{r.skorTerakhir.toFixed(2)}</td>
-                    <td>
-                      <span className={`badge ${r.skorKedisiplinan >= 80 ? 'badge-good' : 'badge-bad'}`}>
-                        {r.skorKedisiplinan.toFixed(2)}
-                      </span>
-                    </td>
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Nama HOD</th><th>Divisi</th><th>Periode Terakhir</th>
+                    <th>Skor Hard Skill</th><th>Skor Kedisiplinan</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {ranking.map((r) => (
+                    <tr key={r.karyawan.id}>
+                      <td>{r.karyawan.namaLengkap}</td>
+                      <td>{r.karyawan.divisi}</td>
+                      <td>{r.periode}</td>
+                      <td>{r.skorTerakhir.toFixed(2)}</td>
+                      <td>
+                        <span className={`badge ${r.skorKedisiplinan >= 80 ? 'badge-good' : 'badge-bad'}`}>
+                          {r.skorKedisiplinan.toFixed(2)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

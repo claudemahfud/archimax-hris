@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ChangeEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { ROUTES } from '../../../router/routePaths';
 import { useAksesGate } from '../../../shared/hooks/useAksesGate';
@@ -6,6 +6,7 @@ import { useToast } from '../../../shared/hooks/useToast';
 import { PortalNav } from '../../../shared/components/PortalNav';
 import { Spinner } from '../../../shared/components/Loading';
 import { listKaryawan, tambahKaryawan, editKaryawan } from '../../../shared/lib/firestore';
+import { uploadGambarKeCloudinary } from '../../../shared/lib/cloudinary';
 import { DAFTAR_DIVISI } from '../../../shared/constants/kpi';
 import type { Karyawan as KaryawanType } from '../../../shared/types';
 
@@ -25,6 +26,7 @@ const FORM_KOSONG: FormState = {
   nik: '', tempatLahir: '', tanggalLahir: '', jenisKelamin: '', alamatKtp: '', alamatDomisili: '',
   agama: '', statusPerkawinan: '', kewarganegaraan: 'Indonesia', noHp: '', kontakDarurat: '',
   email: '', jumlahIstri: 0, jumlahAnak: 0, pendidikanTerakhir: '', levelUser: 'Staff',
+  fotoUrl: '',
 };
 
 // ============================================================
@@ -38,6 +40,8 @@ export default function Karyawan() {
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(FORM_KOSONG);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
+  const [progressFoto, setProgressFoto] = useState(0);
 
   useEffect(() => {
     if (!terverifikasi) return;
@@ -57,6 +61,23 @@ export default function Karyawan() {
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleFotoChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // supaya bisa pilih file yang sama lagi kalau perlu re-upload
+    if (!file) return;
+    setUploadingFoto(true);
+    setProgressFoto(0);
+    try {
+      const hasil = await uploadGambarKeCloudinary(file, setProgressFoto);
+      updateField('fotoUrl', hasil.url);
+      showToast('success', 'Foto berhasil diunggah.');
+    } catch (err) {
+      showToast('error', `Gagal mengunggah foto: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setUploadingFoto(false);
+    }
   }
 
   function mulaiEdit(k: KaryawanType) {
@@ -101,6 +122,46 @@ export default function Karyawan() {
 
         <form className="card" onSubmit={handleSubmit}>
           <h2>{editId ? `Edit: ${form.namaLengkap}` : 'Tambah Karyawan Baru'}</h2>
+
+          {/* SECTION: Foto Profil */}
+          <h3>Foto Profil</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14, flexWrap: 'wrap' }}>
+            <div
+              style={{
+                width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+                background: form.fotoUrl ? 'transparent' : 'var(--gradient-brand)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontWeight: 700, fontSize: '1.4rem', border: '2px solid var(--grey-light)',
+              }}
+            >
+              {form.fotoUrl ? (
+                <img src={form.fotoUrl} alt={`Foto profil ${form.namaLengkap || 'karyawan'}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                (form.namaLengkap || '?').trim().charAt(0).toUpperCase()
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
+              <label htmlFor="fotoKaryawan" className="btn btn-secondary" style={{ width: 'fit-content', cursor: 'pointer' }}>
+                {uploadingFoto ? 'Mengunggah...' : form.fotoUrl ? 'Ganti Foto' : 'Unggah Foto'}
+              </label>
+              <input
+                id="fotoKaryawan"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFotoChange}
+                disabled={uploadingFoto}
+                style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}
+              />
+              {uploadingFoto && (
+                <div style={{ width: 180 }}>
+                  <div className="progress-track">
+                    <div className="progress-fill" style={{ width: `${progressFoto}%` }} />
+                  </div>
+                </div>
+              )}
+              <span style={{ fontSize: '0.8rem', color: 'var(--grey-medium)' }}>JPG, PNG, atau WEBP — maksimal 5 MB.</span>
+            </div>
+          </div>
 
           {/* SECTION: Data Kepegawaian */}
           <h3>Data Kepegawaian</h3>
@@ -187,22 +248,40 @@ export default function Karyawan() {
           ) : daftar.length === 0 ? (
             <p>Belum ada karyawan terdaftar.</p>
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Level User</th><th>Aksi</th></tr>
-              </thead>
-              <tbody>
-                {daftar.map((k) => (
-                  <tr key={k.id}>
-                    <td>{k.namaLengkap}</td>
-                    <td>{k.jabatan}</td>
-                    <td>{k.divisi}</td>
-                    <td>{k.levelUser}</td>
-                    <td><button className="btn btn-secondary" onClick={() => mulaiEdit(k)}>Edit</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr><th>Foto</th><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Level User</th><th>Aksi</th></tr>
+                </thead>
+                <tbody>
+                  {daftar.map((k) => (
+                    <tr key={k.id}>
+                      <td>
+                        <div
+                          style={{
+                            width: 36, height: 36, borderRadius: '50%', overflow: 'hidden',
+                            background: k.fotoUrl ? 'transparent' : 'var(--gradient-brand)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#fff', fontWeight: 700, fontSize: '0.85rem',
+                          }}
+                        >
+                          {k.fotoUrl ? (
+                            <img src={k.fotoUrl} alt={`Foto profil ${k.namaLengkap}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            k.namaLengkap.trim().charAt(0).toUpperCase()
+                          )}
+                        </div>
+                      </td>
+                      <td>{k.namaLengkap}</td>
+                      <td>{k.jabatan}</td>
+                      <td>{k.divisi}</td>
+                      <td>{k.levelUser}</td>
+                      <td><button className="btn btn-secondary" onClick={() => mulaiEdit(k)}>Edit</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
