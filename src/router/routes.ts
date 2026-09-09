@@ -11,4 +11,5 @@ export const routes = [
   { path: ROUTES.HOD_AKSES, component: lazy(() => import('../pages/hod/akses')) },
   { path: ROUTES.HOD_MONITORING, component: lazy(() => import('../pages/hod/monitoring')) },
   { path: ROUTES.HOD_PENILAIAN, component: lazy(() => import('../pages/hod/penilaian')) },
+  { path: ROUTES.GANTI_KODE_AKSES, component: lazy(() => import('../pages/settings/ganti-kode-akses')) },
 ];

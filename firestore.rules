@@ -11,11 +11,15 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // settings (kode akses HRD & HOD): app HANYA butuh READ untuk verifikasi PIN.
-    // Write diblokir dari client — isi/ubah PIN cuma lewat tab "Data" di Firebase Console.
+    // settings: app butuh READ untuk verifikasi Kode Akses (HRD/HOD) & login Superadmin.
+    // WRITE hanya dibuka untuk dokumen aksesHrd & aksesHod — itu yang diubah lewat menu
+    // "Ganti Kode Akses" di Welcome Page (setelah login Superadmin/Google di sisi client).
+    // Dokumen "superadmin" (username/password) tetap read-only dari client — kalau mau
+    // diganti dari default (Superadmin / Admin123), isi manual lewat tab "Data" di Firebase
+    // Console.
     match /settings/{docId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if docId == 'aksesHrd' || docId == 'aksesHod';
     }
   }
 }

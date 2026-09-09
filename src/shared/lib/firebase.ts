@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getAnalytics, isSupported, type Analytics } from 'firebase/analytics';
 
 // ==== KONFIGURASI FIREBASE — Project: archimax-hris ====
@@ -17,6 +18,10 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+
+// ==== Firebase Auth — dipakai untuk opsi "Login dengan Google" di halaman Ganti Kode Akses ====
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
 
 // Analytics hanya berjalan di browser yang mendukung (butuh cookie/IndexedDB) — dicek dulu
 // via isSupported() supaya tidak error saat build/prerender atau di browser yang memblokirnya.

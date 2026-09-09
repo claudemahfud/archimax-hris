@@ -11,6 +11,9 @@ export default function Landing() {
           <Link to={ROUTES.HRD_AKSES} className="btn">Master File HRD</Link>
           <Link to={ROUTES.HOD_AKSES} className="btn btn-secondary">Portal HOD</Link>
         </div>
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--grey-light)' }}>
+          <Link to={ROUTES.GANTI_KODE_AKSES} className="link-muted">Ganti Kode Akses</Link>
+        </div>
       </div>
     </div>
   );

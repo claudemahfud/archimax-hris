@@ -73,9 +73,14 @@ export async function listRiwayatKpi(karyawanId: string): Promise<PenilaianKpi[]
 // ============================================================
 const SETTINGS_COL = 'settings';
 
+// Kode akses default sebelum Administrator mengatur kode akses sendiri lewat menu
+// "Ganti Kode Akses" di Welcome Page. Setelah diganti, nilai di Firestore yang dipakai.
+const KODE_AKSES_HRD_DEFAULT = '120200MFD';
+
 export async function getKodeAksesHrd(): Promise<string> {
   const snap = await getDoc(doc(db, SETTINGS_COL, 'aksesHrd'));
-  return snap.exists() ? (snap.data().kodeAkses as string) : '';
+  const kode = snap.exists() ? (snap.data().kodeAkses as string) : '';
+  return kode || KODE_AKSES_HRD_DEFAULT;
 }
 
 export async function setKodeAksesHrd(kode: string): Promise<void> {
@@ -90,4 +95,26 @@ export async function getKodeAksesHod(divisi: string): Promise<string> {
 
 export async function setKodeAksesHod(divisi: string, kode: string): Promise<void> {
   await setDoc(doc(db, SETTINGS_COL, 'aksesHod'), { [divisi]: kode }, { merge: true });
+}
+
+// ============================================================
+// SECTION: Login Superadmin (proteksi menu "Ganti Kode Akses")
+// ============================================================
+
+// Username & password default sebelum Administrator menggantinya sendiri di Firestore
+// (koleksi settings, dokumen "superadmin"). Sama seperti kode akses HRD, ini hanya fallback.
+const SUPERADMIN_DEFAULT = { username: 'Superadmin', password: 'Admin123' };
+
+export async function getSuperadminCredentials(): Promise<{ username: string; password: string }> {
+  const snap = await getDoc(doc(db, SETTINGS_COL, 'superadmin'));
+  if (!snap.exists()) return SUPERADMIN_DEFAULT;
+  const data = snap.data() as Partial<{ username: string; password: string }>;
+  return {
+    username: data.username || SUPERADMIN_DEFAULT.username,
+    password: data.password || SUPERADMIN_DEFAULT.password,
+  };
+}
+
+export async function setSuperadminCredentials(username: string, password: string): Promise<void> {
+  await setDoc(doc(db, SETTINGS_COL, 'superadmin'), { username, password }, { merge: true });
 }

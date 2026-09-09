@@ -7,4 +7,5 @@ export const ROUTES = {
   HOD_AKSES: '/hod/akses',
   HOD_MONITORING: '/hod/monitoring',
   HOD_PENILAIAN: '/hod/penilaian',
+  GANTI_KODE_AKSES: '/ganti-kode-akses',
 } as const;
