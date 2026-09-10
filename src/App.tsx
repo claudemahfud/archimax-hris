@@ -5,10 +5,12 @@ import { ErrorBoundary } from './shared/components/ErrorBoundary';
 import { ToastContainer } from './shared/components/Toast';
 import { ToastProvider } from './shared/hooks/useToast';
 import { Spinner } from './shared/components/Loading';
+import { AutoLogoutWatcher } from './shared/components/AutoLogoutWatcher';
 
 export default function App() {
   return (
     <ToastProvider>
+      <AutoLogoutWatcher />
       <ErrorBoundary>
         <Suspense fallback={<div className="page"><Spinner label="Memuat halaman..." /></div>}>
           <Routes>
