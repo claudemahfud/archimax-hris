@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { ROUTES } from '../../../router/routePaths';
 import { useAksesGate } from '../../../shared/hooks/useAksesGate';
+import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useToast } from '../../../shared/hooks/useToast';
 import { PortalNav } from '../../../shared/components/PortalNav';
 import { Spinner } from '../../../shared/components/Loading';
@@ -27,7 +28,9 @@ type BarisImport = {
 };
 
 export default function ImportExcel() {
-  const { terverifikasi, keluar } = useAksesGate('akses_hrd');
+  const { terverifikasi, keluar: keluarHrd } = useAksesGate('akses_hrd');
+  const { keluar: keluarSuperadmin } = useAksesSuperadmin();
+  const keluar = () => { keluarSuperadmin(); keluarHrd(); };
   const { showToast } = useToast();
   const [baris, setBaris] = useState<BarisImport[]>([]);
   const [membaca, setMembaca] = useState(false);

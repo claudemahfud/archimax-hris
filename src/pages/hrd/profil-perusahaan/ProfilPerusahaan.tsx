@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { ROUTES } from '../../../router/routePaths';
 import { useAksesGate } from '../../../shared/hooks/useAksesGate';
+import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useToast } from '../../../shared/hooks/useToast';
 import { PortalNav } from '../../../shared/components/PortalNav';
 import { Spinner } from '../../../shared/components/Loading';
@@ -44,7 +45,9 @@ const DRAFT_KEBIJAKAN_REWARD = `1. Insentif Kinerja — bonus maksimal 20% dari 
 9. Pengembangan SDM — pelatihan & sertifikasi (biaya perusahaan) untuk karyawan loyal & berdedikasi.`;
 
 export default function ProfilPerusahaan() {
-  const { terverifikasi, keluar } = useAksesGate('akses_hrd');
+  const { terverifikasi, keluar: keluarHrd } = useAksesGate('akses_hrd');
+  const { keluar: keluarSuperadmin } = useAksesSuperadmin();
+  const keluar = () => { keluarSuperadmin(); keluarHrd(); };
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

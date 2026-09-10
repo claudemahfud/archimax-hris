@@ -6,6 +6,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import { ROUTES } from '../../../router/routePaths';
 import { useAksesGate } from '../../../shared/hooks/useAksesGate';
+import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { PortalNav } from '../../../shared/components/PortalNav';
 import { Spinner } from '../../../shared/components/Loading';
 import { listKaryawanHod, listRiwayatKpi } from '../../../shared/lib/firestore';
@@ -24,7 +25,9 @@ const NAV_ITEMS = [
 ];
 
 export default function Dashboard() {
-  const { terverifikasi, keluar } = useAksesGate('akses_hrd');
+  const { terverifikasi, keluar: keluarHrd } = useAksesGate('akses_hrd');
+  const { keluar: keluarSuperadmin } = useAksesSuperadmin();
+  const keluar = () => { keluarSuperadmin(); keluarHrd(); };
   const [loading, setLoading] = useState(true);
   const [ranking, setRanking] = useState<BarisRanking[]>([]);
   const [trendLabels, setTrendLabels] = useState<string[]>([]);
