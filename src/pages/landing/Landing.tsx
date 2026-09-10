@@ -1,8 +1,18 @@
-import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { signInWithPopup, signOut } from 'firebase/auth';
 import { ROUTES } from '../../router/routePaths';
 import { LOGO_ARCHIMAX_URL } from '../../shared/constants/branding';
+import { DAFTAR_DIVISI } from '../../shared/constants/kpi';
+import { auth, googleProvider } from '../../shared/lib/firebase';
+import {
+  getWhitelistSuperadmin, cariAkunPortalByEmail, daftarkanAkunPortal, hapusAkunPortal, listAkunPortal,
+  loginAkunPortal, kirimMagicLinkResetPassword,
+} from '../../shared/lib/firestore';
+import type { AkunPortal } from '../../shared/types';
 import { useAksesSuperadmin } from '../../shared/hooks/useAksesSuperadmin';
+import { useAksesGate } from '../../shared/hooks/useAksesGate';
+import { useAksesHod } from '../../shared/hooks/useAksesHod';
 import { useToast } from '../../shared/hooks/useToast';
 import { Spinner } from '../../shared/components/Loading';
 import { PortalNav } from '../../shared/components/PortalNav';
@@ -25,10 +35,16 @@ const FACETS = [
 ] as const;
 
 type Mode = 'hero' | 'login';
+type DaftarMode = 'hrd' | 'hod' | null;
 
 export default function Landing() {
+  const navigate = useNavigate();
   const { showToast } = useToast();
-  const { terverifikasi, loginManual, loginGoogle, keluar } = useAksesSuperadmin();
+
+  const { terverifikasi: terverifikasiSuperadmin, loginManual, konfirmasiSuperadmin, keluar: keluarSuperadmin } = useAksesSuperadmin();
+  const { terverifikasi: terverifikasiHrd, keluar: keluarHrd } = useAksesGate('akses_hrd');
+  const { terverifikasi: terverifikasiHod, divisi: divisiHod, keluar: keluarHod } = useAksesHod();
+
   const [mode, setMode] = useState<Mode>('hero');
 
   const [username, setUsername] = useState('');
@@ -36,16 +52,57 @@ export default function Landing() {
   const [loadingLogin, setLoadingLogin] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
 
+  // Kelola Akun Portal (HRD/HOD) — khusus Superadmin, tambahan di samping Kode Akses (PIN)
+  // yang tetap berfungsi seperti biasa. Form pendaftaran berisi Username, Password & Email.
+  const [daftarMode, setDaftarMode] = useState<DaftarMode>(null);
+  const [usernameAkunBaru, setUsernameAkunBaru] = useState('');
+  const [emailAkunBaru, setEmailAkunBaru] = useState('');
+  const [passwordAkunBaru, setPasswordAkunBaru] = useState('');
+  const [konfirmasiPasswordAkunBaru, setKonfirmasiPasswordAkunBaru] = useState('');
+  const [divisiAkunBaru, setDivisiAkunBaru] = useState<string>(DAFTAR_DIVISI[0]);
+  const [loadingDaftarAkun, setLoadingDaftarAkun] = useState(false);
+  const [daftarAkun, setDaftarAkun] = useState<AkunPortal[]>([]);
+
+  // Lupa/Ganti Password — Magic Link Reset via Firebase (lihat kirimMagicLinkResetPassword
+  // di shared/lib/firestore.ts). Sama-sama mengirim email berisi link ke /reset-password.
+  const [lupaPasswordTerbuka, setLupaPasswordTerbuka] = useState(false);
+  const [identitasLupaPassword, setIdentitasLupaPassword] = useState('');
+  const [loadingLupaPassword, setLoadingLupaPassword] = useState(false);
+
+  useEffect(() => {
+    if (!terverifikasiSuperadmin) return;
+    listAkunPortal().then(setDaftarAkun).catch(() => undefined);
+  }, [terverifikasiSuperadmin]);
+
+  // Satu form Username + Password untuk SEMUA role: dicoba berurutan sebagai Superadmin dulu,
+  // kalau bukan lalu dicoba sebagai akun HRD/HOD terdaftar (username/email + password Firebase
+  // Auth sungguhan — lihat daftarkanAkunPortal & loginAkunPortal di shared/lib/firestore.ts).
   async function handleLoginManual(e: FormEvent) {
     e.preventDefault();
     setLoadingLogin(true);
     try {
-      const ok = await loginManual(username, password);
-      if (ok) {
+      const okSuperadmin = await loginManual(username, password);
+      if (okSuperadmin) {
         showToast('success', 'Login berhasil. Selamat datang, Superadmin.');
-      } else {
-        showToast('error', 'Username atau password salah.');
+        return;
       }
+
+      const akun = await loginAkunPortal(username, password);
+      if (akun?.role === 'HRD') {
+        sessionStorage.setItem('akses_hrd', '1');
+        showToast('success', 'Login berhasil. Selamat datang, HRD.');
+        navigate(ROUTES.HRD_DASHBOARD);
+        return;
+      }
+      if (akun?.role === 'HOD' && akun.divisi) {
+        sessionStorage.setItem('akses_hod', '1');
+        sessionStorage.setItem('akses_hod_divisi', akun.divisi);
+        showToast('success', `Login berhasil. Selamat datang, HOD ${akun.divisi}.`);
+        navigate(ROUTES.HOD_MONITORING);
+        return;
+      }
+
+      showToast('error', 'Username atau password salah.');
     } catch (err) {
       showToast('error', `Gagal login: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -53,15 +110,108 @@ export default function Landing() {
     }
   }
 
+  async function handleLupaPassword(e: FormEvent) {
+    e.preventDefault();
+    const bersih = identitasLupaPassword.trim();
+    if (!bersih) return;
+    setLoadingLupaPassword(true);
+    try {
+      const email = await kirimMagicLinkResetPassword(bersih);
+      showToast('success', `Magic Link Reset Password telah dikirim ke ${email}. Cek email Anda (termasuk folder Spam).`);
+      setIdentitasLupaPassword('');
+      setLupaPasswordTerbuka(false);
+    } catch (err) {
+      showToast('error', `Gagal mengirim Magic Link: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoadingLupaPassword(false);
+    }
+  }
+
+  // Satu tombol "Login dengan Google" untuk SEMUA role (Superadmin / HRD / HOD). Setelah popup
+  // Google berhasil, email dicocokkan berurutan: whitelist Superadmin dulu (akses 100%), lalu
+  // akun HRD/HOD yang didaftarkan Superadmin (lihat handleDaftarAkun di bawah). Kode Akses (PIN)
+  // di halaman /hrd/akses & /hod/akses TETAP berfungsi seperti biasa untuk yang belum/tidak
+  // punya akun Google terdaftar — ini jalur tambahan, bukan pengganti.
   async function handleLoginGoogle() {
     setLoadingGoogle(true);
     try {
-      const nama = await loginGoogle();
-      showToast('success', `Login dengan Google berhasil. Selamat datang, ${nama}.`);
+      const hasil = await signInWithPopup(auth, googleProvider);
+      const email = (hasil.user.email || '').toLowerCase().trim();
+
+      const whitelist = await getWhitelistSuperadmin();
+      if (whitelist.includes(email)) {
+        konfirmasiSuperadmin();
+        showToast('success', 'Login dengan Google berhasil. Selamat datang, Superadmin.');
+        return;
+      }
+
+      const akun = await cariAkunPortalByEmail(email);
+      if (akun?.role === 'HRD') {
+        sessionStorage.setItem('akses_hrd', '1');
+        showToast('success', 'Login dengan Google berhasil. Selamat datang, HRD.');
+        navigate(ROUTES.HRD_DASHBOARD);
+        return;
+      }
+      if (akun?.role === 'HOD' && akun.divisi) {
+        sessionStorage.setItem('akses_hod', '1');
+        sessionStorage.setItem('akses_hod_divisi', akun.divisi);
+        showToast('success', `Login dengan Google berhasil. Selamat datang, HOD ${akun.divisi}.`);
+        navigate(ROUTES.HOD_MONITORING);
+        return;
+      }
+
+      await signOut(auth).catch(() => undefined);
+      showToast('error', `Email ${email || 'ini'} belum terdaftar. Hubungi Superadmin untuk didaftarkan.`);
     } catch (err) {
       showToast('error', `Gagal login dengan Google: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoadingGoogle(false);
+    }
+  }
+
+  async function handleDaftarAkun(e: FormEvent) {
+    e.preventDefault();
+    if (!daftarMode) return;
+    const usernameBersih = usernameAkunBaru.trim();
+    const emailBersih = emailAkunBaru.trim();
+    if (!usernameBersih || !emailBersih || !passwordAkunBaru) return;
+    if (passwordAkunBaru !== konfirmasiPasswordAkunBaru) {
+      showToast('error', 'Konfirmasi Password tidak sama.');
+      return;
+    }
+    setLoadingDaftarAkun(true);
+    try {
+      await daftarkanAkunPortal({
+        username: usernameBersih,
+        email: emailBersih,
+        password: passwordAkunBaru,
+        role: daftarMode === 'hrd' ? 'HRD' : 'HOD',
+        divisi: daftarMode === 'hod' ? divisiAkunBaru : undefined,
+      });
+      setDaftarAkun(await listAkunPortal());
+      showToast('success', `Akun ${daftarMode === 'hrd' ? 'HRD' : 'HOD'} "${usernameBersih}" (${emailBersih}) berhasil didaftarkan.`);
+      setUsernameAkunBaru('');
+      setEmailAkunBaru('');
+      setPasswordAkunBaru('');
+      setKonfirmasiPasswordAkunBaru('');
+      setDaftarMode(null);
+    } catch (err) {
+      showToast('error', `Gagal mendaftarkan akun: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoadingDaftarAkun(false);
+    }
+  }
+
+  async function handleHapusAkun(akun: AkunPortal) {
+    setLoadingDaftarAkun(true);
+    try {
+      await hapusAkunPortal(akun.id);
+      setDaftarAkun(await listAkunPortal());
+      showToast('success', `Akun ${akun.email} berhasil dihapus.`);
+    } catch (err) {
+      showToast('error', `Gagal menghapus akun: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoadingDaftarAkun(false);
     }
   }
 
@@ -75,20 +225,177 @@ export default function Landing() {
     </Link>
   );
 
-  // ==== Sudah login sebagai Superadmin (akun kendali penuh) — navbar baru muncul di sini ====
-  if (terverifikasi) {
+  // ==== Sudah login sebagai Superadmin (akun kendali penuh — Full Akses 100%) ====
+  if (terverifikasiSuperadmin) {
     return (
       <div>
-        <PortalNav title="Archimax HRIS" items={[]} onKeluar={keluar} />
+        <PortalNav title="Archimax HRIS" items={[]} onKeluar={keluarSuperadmin} />
         <div className="page">
           <div className="card" style={{ maxWidth: 480, margin: '32px auto', textAlign: 'center' }}>
             {Logo(140)}
             <h1 className="login-title">Selamat Datang, Superadmin</h1>
             <p className="login-subtitle">Pilih portal yang ingin dikelola.</p>
             <div className="dashboard-links">
-              <Link to={ROUTES.HRD_AKSES} className="btn">Master File HRD</Link>
+              <Link to={ROUTES.HRD_DASHBOARD} className="btn">Master File HRD</Link>
               <Link to={ROUTES.HOD_AKSES} className="btn btn-secondary">Portal HOD</Link>
               <Link to={ROUTES.GANTI_KODE_AKSES} className="btn btn-secondary">Ganti Kode Akses</Link>
+            </div>
+
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--grey-light, #e5e5e5)', textAlign: 'left' }}>
+              <p style={{ fontWeight: 700, marginBottom: 10, textAlign: 'center' }}>Kelola Akun Portal (Login via Google)</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 12 }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setDaftarMode(daftarMode === 'hrd' ? null : 'hrd')}
+                >
+                  + Daftarkan Akun HRD
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setDaftarMode(daftarMode === 'hod' ? null : 'hod')}
+                >
+                  + Daftarkan Akun HOD
+                </button>
+              </div>
+
+              {daftarMode && (
+                <form onSubmit={handleDaftarAkun} style={{ marginBottom: 16 }}>
+                  <div className="form-field">
+                    <label htmlFor="usernameAkunBaruInput">Username {daftarMode === 'hrd' ? 'HRD' : 'HOD'}</label>
+                    <input
+                      id="usernameAkunBaruInput"
+                      type="text"
+                      value={usernameAkunBaru}
+                      onChange={(e) => setUsernameAkunBaru(e.target.value)}
+                      placeholder="mis. hrd.archimax"
+                      required
+                      autoFocus
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label htmlFor="passwordAkunBaruInput">Password</label>
+                    <input
+                      id="passwordAkunBaruInput"
+                      type="password"
+                      value={passwordAkunBaru}
+                      onChange={(e) => setPasswordAkunBaru(e.target.value)}
+                      placeholder="Minimal 6 karakter"
+                      required
+                      minLength={6}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label htmlFor="konfirmasiPasswordAkunBaruInput">Konfirmasi Password</label>
+                    <input
+                      id="konfirmasiPasswordAkunBaruInput"
+                      type="password"
+                      value={konfirmasiPasswordAkunBaru}
+                      onChange={(e) => setKonfirmasiPasswordAkunBaru(e.target.value)}
+                      required
+                      minLength={6}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label htmlFor="emailAkunBaruInput">Email {daftarMode === 'hrd' ? 'HRD' : 'HOD'} (untuk Login dengan Google &amp; Magic Link Reset Password)</label>
+                    <input
+                      id="emailAkunBaruInput"
+                      type="email"
+                      value={emailAkunBaru}
+                      onChange={(e) => setEmailAkunBaru(e.target.value)}
+                      placeholder="nama@gmail.com"
+                      required
+                    />
+                  </div>
+                  {daftarMode === 'hod' && (
+                    <div className="form-field">
+                      <label htmlFor="divisiAkunBaruSelect">Divisi</label>
+                      <select
+                        id="divisiAkunBaruSelect"
+                        value={divisiAkunBaru}
+                        onChange={(e) => setDivisiAkunBaru(e.target.value)}
+                      >
+                        {DAFTAR_DIVISI.map((d) => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <button type="submit" className="btn" disabled={loadingDaftarAkun} style={{ width: '100%' }}>
+                    {loadingDaftarAkun ? <Spinner label="Menyimpan..." /> : 'Daftarkan Akun'}
+                  </button>
+                </form>
+              )}
+
+              {daftarAkun.length === 0 ? (
+                <p style={{ textAlign: 'center' }}>Belum ada akun HRD/HOD terdaftar.</p>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {daftarAkun.map((akun) => (
+                    <li
+                      key={akun.id}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                        border: '1px solid var(--grey-light, #e5e5e5)', borderRadius: 10, padding: '8px 12px',
+                      }}
+                    >
+                      <span>
+                        <strong>{akun.role}</strong>{akun.divisi ? ` · ${akun.divisi}` : ''} — {akun.username} ({akun.email})
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        disabled={loadingDaftarAkun}
+                        onClick={() => handleHapusAkun(akun)}
+                        style={{ padding: '4px 12px', fontSize: '0.85rem', flexShrink: 0 }}
+                      >
+                        Hapus
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==== Sudah login sebagai HRD (akun Google terdaftar) — TANPA Portal HOD & Ganti Kode Akses ====
+  if (terverifikasiHrd) {
+    return (
+      <div>
+        <PortalNav title="Archimax HRIS" items={[]} onKeluar={keluarHrd} />
+        <div className="page">
+          <div className="card" style={{ maxWidth: 480, margin: '32px auto', textAlign: 'center' }}>
+            {Logo(140)}
+            <h1 className="login-title">Selamat Datang, HRD</h1>
+            <p className="login-subtitle">Pilih portal yang ingin dikelola.</p>
+            <div className="dashboard-links">
+              <Link to={ROUTES.HRD_DASHBOARD} className="btn">Master File HRD</Link>
+              <Link to={ROUTES.HRD_KARYAWAN} className="btn btn-secondary">Kelola Karyawan</Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==== Sudah login sebagai HOD (akun Google terdaftar per divisi) ====
+  if (terverifikasiHod) {
+    return (
+      <div>
+        <PortalNav title="Archimax HRIS" items={[]} onKeluar={keluarHod} />
+        <div className="page">
+          <div className="card" style={{ maxWidth: 480, margin: '32px auto', textAlign: 'center' }}>
+            {Logo(140)}
+            <h1 className="login-title">Selamat Datang, HOD {divisiHod}</h1>
+            <p className="login-subtitle">Pilih portal yang ingin dikelola.</p>
+            <div className="dashboard-links">
+              <Link to={ROUTES.HOD_MONITORING} className="btn">Portal HOD</Link>
             </div>
           </div>
         </div>
@@ -161,6 +468,39 @@ export default function Landing() {
                 {loadingLogin ? <Spinner label="Memverifikasi..." /> : 'Masuk'}
               </button>
             </form>
+
+            <button
+              type="button"
+              className="link-muted"
+              style={{ display: 'block', margin: '10px auto 0', textAlign: 'center' }}
+              onClick={() => setLupaPasswordTerbuka((v) => !v)}
+            >
+              Lupa Password? / Ganti Password
+            </button>
+
+            {lupaPasswordTerbuka && (
+              <form onSubmit={handleLupaPassword} style={{ marginTop: 10 }}>
+                <p style={{ fontSize: '0.9rem' }}>
+                  Masukkan Username atau Email akun HRD/HOD Anda. Kami akan mengirim Magic Link
+                  lewat email untuk mengatur password baru (berlaku juga untuk mengganti password
+                  meski Anda tidak lupa).
+                </p>
+                <div className="form-field">
+                  <label htmlFor="identitasLupaPasswordInput">Username atau Email</label>
+                  <input
+                    id="identitasLupaPasswordInput"
+                    type="text"
+                    value={identitasLupaPassword}
+                    onChange={(e) => setIdentitasLupaPassword(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+                <button type="submit" className="btn btn-secondary" disabled={loadingLupaPassword} style={{ width: '100%' }}>
+                  {loadingLupaPassword ? <Spinner label="Mengirim Magic Link..." /> : 'Kirim Magic Link Reset Password'}
+                </button>
+              </form>
+            )}
 
             <div className="divider-or"><span>atau</span></div>
 

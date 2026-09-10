@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../router/routePaths';
+import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useAksesGate } from '../../../shared/hooks/useAksesGate';
 import { useToast } from '../../../shared/hooks/useToast';
 import { getKodeAksesHrd } from '../../../shared/lib/firestore';
@@ -9,9 +10,14 @@ import { Spinner } from '../../../shared/components/Loading';
 export default function Akses() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { terverifikasi: isSuperadmin } = useAksesSuperadmin();
   const { verifikasi } = useAksesGate('akses_hrd');
   const [kode, setKode] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Superadmin = akses 100% (sudah otomatis lolos PIN HRD saat login, lihat useAksesSuperadmin).
+  if (isSuperadmin) return <Navigate to={ROUTES.HRD_DASHBOARD} replace />;
+
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

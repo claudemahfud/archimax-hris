@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getAnalytics, isSupported, type Analytics } from 'firebase/analytics';
@@ -19,9 +19,21 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 
-// ==== Firebase Auth — dipakai untuk opsi "Login dengan Google" di halaman Ganti Kode Akses ====
+// ==== Firebase Auth — dipakai untuk opsi "Login dengan Google" & Login manual Username/Password
+// (Akun Portal HRD/HOD) di Welcome Page / halaman Ganti Kode Akses ====
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// ==== App Firebase KEDUA (instance terpisah, project SAMA) — khusus untuk membuat akun HRD/HOD
+// baru (createUserWithEmailAndPassword). Firebase Auth otomatis login sebagai user yang baru
+// dibuat pada instance yang dipakai; kalau kita pakai `auth` utama, sesi Superadmin yang sedang
+// login akan ikut tertimpa/keluar. Dengan instance kedua ini, pembuatan akun baru terjadi di
+// "ruang" terpisah lalu langsung sign-out dari situ — sesi Superadmin di `auth` utama tidak
+// terganggu sama sekali. Lihat daftarkanAkunPortal() di firestore.ts.
+const secondaryApp = getApps().some((a) => a.name === 'secondary')
+  ? getApp('secondary')
+  : initializeApp(firebaseConfig, 'secondary');
+export const secondaryAuth = getAuth(secondaryApp);
 
 // Analytics hanya berjalan di browser yang mendukung (butuh cookie/IndexedDB) — dicek dulu
 // via isSupported() supaya tidak error saat build/prerender atau di browser yang memblokirnya.

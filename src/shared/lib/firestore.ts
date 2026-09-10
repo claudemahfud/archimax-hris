@@ -2,8 +2,12 @@ import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where,
   orderBy, setDoc, serverTimestamp, Timestamp, writeBatch,
 } from 'firebase/firestore';
-import { db } from './firebase';
-import type { Karyawan, PenilaianKpi, PenilaianKpiForm, CompanyInfo, HasilImportExcel } from '../types';
+import {
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
+  sendPasswordResetEmail, updateProfile, type ActionCodeSettings,
+} from 'firebase/auth';
+import { db, auth, secondaryAuth } from './firebase';
+import type { Karyawan, PenilaianKpi, PenilaianKpiForm, CompanyInfo, HasilImportExcel, AkunPortal } from '../types';
 
 // ============================================================
 // SECTION: Karyawan (Master Data)
@@ -176,6 +180,153 @@ export async function getSuperadminCredentials(): Promise<{ username: string; pa
 
 export async function setSuperadminCredentials(username: string, password: string): Promise<void> {
   await setDoc(doc(db, SETTINGS_COL, 'superadmin'), { username, password }, { merge: true });
+}
+
+// ============================================================
+// SECTION: Whitelist Email Superadmin (proteksi "Login dengan Google" di Welcome Page)
+// ============================================================
+// Sebelum ada whitelist ini, akun Google APAPUN yang berhasil sign-in otomatis dianggap
+// Superadmin (celah keamanan). Sekarang login Google Superadmin hanya diterima kalau
+// emailnya ada di daftar ini. Username/password manual tetap jalan seperti biasa sebagai
+// jalur cadangan (misalnya sebelum ada email yang didaftarkan sama sekali).
+export async function getWhitelistSuperadmin(): Promise<string[]> {
+  const snap = await getDoc(doc(db, SETTINGS_COL, 'whitelistSuperadmin'));
+  if (!snap.exists()) return [];
+  const data = snap.data() as { emails?: string[] };
+  return (data.emails || []).map((e) => e.toLowerCase().trim());
+}
+
+export async function tambahWhitelistSuperadmin(email: string): Promise<void> {
+  const bersih = email.toLowerCase().trim();
+  const daftar = await getWhitelistSuperadmin();
+  if (daftar.includes(bersih)) return;
+  await setDoc(doc(db, SETTINGS_COL, 'whitelistSuperadmin'), { emails: [...daftar, bersih] }, { merge: true });
+}
+
+export async function hapusWhitelistSuperadmin(email: string): Promise<void> {
+  const bersih = email.toLowerCase().trim();
+  const daftar = await getWhitelistSuperadmin();
+  await setDoc(doc(db, SETTINGS_COL, 'whitelistSuperadmin'), { emails: daftar.filter((e) => e !== bersih) }, { merge: true });
+}
+
+// ============================================================
+// SECTION: Akun Portal HRD/HOD (Username + Password + Email — Firebase Auth sungguhan,
+// TAMBAHAN di samping Kode Akses/PIN dan Login dengan Google)
+// ============================================================
+// Hanya Superadmin yang bisa mendaftarkan (lihat form "+ Daftarkan Akun" di Welcome Page).
+// Form pendaftaran berisi 3 field: Username, Password, Email. Saat didaftarkan:
+//   1. Akun Firebase Auth SUNGGUHAN dibuat (email + password) lewat instance `secondaryAuth`
+//      supaya sesi Superadmin yang sedang login di `auth` utama tidak ikut tertimpa.
+//   2. Dokumen di koleksi ini (akunPortal) menyimpan Username -> Email + role/divisi, dipakai
+//      untuk: (a) mencocokkan email saat "Login dengan Google", (b) mencari email dari Username
+//      saat login manual Username+Password, dan (c) mencari email tujuan saat fitur "Lupa
+//      Password" / "Ganti Password" (Magic Link Reset) dipakai dengan Username.
+// Password TIDAK PERNAH disimpan di Firestore — hanya ada di Firebase Auth.
+const AKUN_PORTAL_COL = 'akunPortal';
+
+export async function listAkunPortal(): Promise<AkunPortal[]> {
+  const snap = await getDocs(query(collection(db, AKUN_PORTAL_COL), orderBy('createdAt', 'desc')));
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AkunPortal, 'id'>) }));
+}
+
+export async function cariAkunPortalByEmail(email: string): Promise<AkunPortal | null> {
+  const bersih = email.toLowerCase().trim();
+  const snap = await getDocs(query(collection(db, AKUN_PORTAL_COL), where('email', '==', bersih)));
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...(d.data() as Omit<AkunPortal, 'id'>) };
+}
+
+export async function cariAkunPortalByUsername(username: string): Promise<AkunPortal | null> {
+  const bersih = username.toLowerCase().trim();
+  const snap = await getDocs(query(collection(db, AKUN_PORTAL_COL), where('username', '==', bersih)));
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, ...(d.data() as Omit<AkunPortal, 'id'>) };
+}
+
+/**
+ * Cari akun berdasarkan Username ATAU Email — dipakai di form Login manual & Lupa Password
+ * supaya user boleh mengisi salah satu (tidak wajib ingat dua-duanya).
+ */
+export async function cariAkunPortalByIdentitas(identitas: string): Promise<AkunPortal | null> {
+  const bersih = identitas.toLowerCase().trim();
+  if (!bersih) return null;
+  if (bersih.includes('@')) return cariAkunPortalByEmail(bersih);
+  return cariAkunPortalByUsername(bersih);
+}
+
+export async function daftarkanAkunPortal(data: {
+  username: string; email: string; password: string; role: 'HRD' | 'HOD'; divisi?: string;
+}): Promise<string> {
+  const usernameBersih = data.username.toLowerCase().trim();
+  const emailBersih = data.email.toLowerCase().trim();
+
+  if (usernameBersih.length < 3) throw new Error('Username minimal 3 karakter.');
+  if (data.password.length < 6) throw new Error('Password minimal 6 karakter (ketentuan Firebase Auth).');
+  if (await cariAkunPortalByUsername(usernameBersih)) throw new Error('Username ini sudah dipakai akun lain.');
+  if (await cariAkunPortalByEmail(emailBersih)) throw new Error('Email ini sudah terdaftar sebagai akun portal.');
+
+  // Buat akun Firebase Auth sungguhan lewat instance KEDUA (lihat secondaryAuth di firebase.ts)
+  // supaya sesi Superadmin yang sedang mendaftarkan akun ini tidak ikut ter-sign-out/tertimpa.
+  const kredensial = await createUserWithEmailAndPassword(secondaryAuth, emailBersih, data.password);
+  await updateProfile(kredensial.user, { displayName: usernameBersih }).catch(() => undefined);
+  await signOut(secondaryAuth).catch(() => undefined);
+
+  const ref = await addDoc(collection(db, AKUN_PORTAL_COL), {
+    username: usernameBersih,
+    email: emailBersih,
+    role: data.role,
+    ...(data.role === 'HOD' ? { divisi: data.divisi } : {}),
+    createdAt: Date.now(),
+  });
+  return ref.id;
+}
+
+export async function hapusAkunPortal(id: string): Promise<void> {
+  await deleteDoc(doc(db, AKUN_PORTAL_COL, id));
+}
+
+/**
+ * Login manual Username/Email + Password untuk akun HRD/HOD yang didaftarkan lewat
+ * daftarkanAkunPortal(). Mengembalikan null kalau identitas tidak ditemukan di koleksi
+ * akunPortal (biar pemanggil bisa lanjut cek jalur lain, mis. Superadmin/PIN); melempar
+ * error kalau identitas ditemukan tapi password Firebase Auth-nya salah.
+ */
+export async function loginAkunPortal(identitas: string, password: string): Promise<AkunPortal | null> {
+  const akun = await cariAkunPortalByIdentitas(identitas);
+  if (!akun) return null;
+  await signInWithEmailAndPassword(auth, akun.email, password);
+  return akun;
+}
+
+// ============================================================
+// SECTION: Magic Link Reset Password (Firebase Auth) — dipakai untuk "Lupa Password" (belum
+// login) MAUPUN "Ganti Password" (sudah login, tapi tidak mau/lupa masukkan password lama).
+// Keduanya memakai mekanisme yang sama: Firebase mengirim email berisi link (Magic Link) ke
+// alamat email akun tersebut; link itu mengarah balik ke halaman /reset-password di app ini
+// (bukan halaman default Firebase) dengan kode aksi (oobCode) tertanam di URL. Di halaman
+// itu, user tinggal mengetik password baru — TANPA perlu tahu password lama.
+// ============================================================
+
+function actionCodeSettingsResetPassword(): ActionCodeSettings {
+  return {
+    // handleCodeInApp: true -> Firebase membuat link Magic Link yang langsung menuju URL app
+    // kita (bukan halaman hosted bawaan Firebase), lengkap dengan ?mode=resetPassword&oobCode=...
+    url: `${window.location.origin}/reset-password`,
+    handleCodeInApp: true,
+  };
+}
+
+/**
+ * Kirim email Magic Link Reset Password. `identitas` boleh Username ATAU Email akun portal
+ * yang terdaftar. Mengembalikan alamat email tujuan (untuk ditampilkan di pesan sukses).
+ */
+export async function kirimMagicLinkResetPassword(identitas: string): Promise<string> {
+  const akun = await cariAkunPortalByIdentitas(identitas);
+  if (!akun) throw new Error('Username/Email tidak ditemukan sebagai akun HRD/HOD terdaftar.');
+  await sendPasswordResetEmail(auth, akun.email, actionCodeSettingsResetPassword());
+  return akun.email;
 }
 
 // ============================================================

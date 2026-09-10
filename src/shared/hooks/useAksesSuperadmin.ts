@@ -1,13 +1,13 @@
 import { useCallback, useState } from 'react';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
-import { getSuperadminCredentials } from '../lib/firestore';
+import { getSuperadminCredentials, getWhitelistSuperadmin } from '../lib/firestore';
 
 // Catatan keamanan: sama seperti Kode Akses (lihat useAksesGate.ts), pengecekan username/password
 // di sini berjalan di client. Login Google memakai Firebase Auth sungguhan (popup akun Google),
-// namun akun Google mana pun yang berhasil login akan dianggap Superadmin — belum ada whitelist
-// email. Untuk produksi, sebaiknya tambahkan validasi email lewat Firestore Security Rules atau
-// Cloud Function.
+// dan SEKARANG divalidasi ke whitelist email Superadmin (koleksi settings/whitelistSuperadmin,
+// diatur lewat halaman "Ganti Kode Akses") — akun Google yang emailnya tidak terdaftar akan
+// ditolak & otomatis sign-out, supaya "Full Akses 100%" benar-benar eksklusif untuk Superadmin.
 
 const STORAGE_KEY = 'akses_superadmin';
 
@@ -20,24 +20,48 @@ export function useAksesSuperadmin() {
     const kredensial = await getSuperadminCredentials();
     const ok = username.trim() === kredensial.username && password === kredensial.password;
     if (ok) {
-      sessionStorage.setItem(STORAGE_KEY, '1');
-      setTerverifikasi(true);
+      tandaiSesiPenuh();
     }
     return ok;
   }, []);
 
   const loginGoogle = useCallback(async (): Promise<string> => {
     const hasil = await signInWithPopup(auth, googleProvider);
-    sessionStorage.setItem(STORAGE_KEY, '1');
-    setTerverifikasi(true);
-    return hasil.user.displayName || hasil.user.email || 'Akun Google';
+    const email = (hasil.user.email || '').toLowerCase().trim();
+    const whitelist = await getWhitelistSuperadmin();
+    if (!whitelist.includes(email)) {
+      await signOut(auth).catch(() => undefined);
+      throw new Error(`Email ${email || 'ini'} belum terdaftar sebagai Superadmin.`);
+    }
+    tandaiSesiPenuh();
+    return hasil.user.displayName || email || 'Akun Google';
   }, []);
+
+  // Dipakai Welcome Page: setelah popup Google sudah jalan & email sudah dicocokkan sendiri
+  // ke whitelist (lihat handleLoginGoogle di Landing.tsx), tinggal tandai sesi terverifikasi
+  // tanpa membuka popup Google kedua kalinya.
+  const konfirmasiSuperadmin = useCallback(() => {
+    tandaiSesiPenuh();
+  }, []);
+
+  // Superadmin = otoritas tertinggi, akses 100% ke SEMUA portal — begitu login Superadmin
+  // terverifikasi, Kode Akses (PIN) Master File HRD & Portal HOD ikut otomatis terbuka
+  // (tidak perlu isi PIN lagi). PIN tetap wajib seperti biasa untuk siapa pun yang BUKAN
+  // Superadmin/akun HRD-HOD terdaftar.
+  function tandaiSesiPenuh() {
+    sessionStorage.setItem(STORAGE_KEY, '1');
+    sessionStorage.setItem('akses_hrd', '1');
+    setTerverifikasi(true);
+  }
 
   const keluar = useCallback(() => {
     sessionStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem('akses_hrd');
+    sessionStorage.removeItem('akses_hod');
+    sessionStorage.removeItem('akses_hod_divisi');
     setTerverifikasi(false);
     if (auth.currentUser) signOut(auth).catch(() => undefined);
   }, []);
 
-  return { terverifikasi, loginManual, loginGoogle, keluar };
+  return { terverifikasi, loginManual, loginGoogle, konfirmasiSuperadmin, keluar };
 }

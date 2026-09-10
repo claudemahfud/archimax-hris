@@ -69,6 +69,20 @@ export interface PenilaianKpi extends PenilaianKpiForm {
   dinilaiOleh: 'HRD' | 'HOD';
 }
 
+// Akun Portal (HRD/HOD) yang didaftarkan Superadmin lewat Welcome Page. Dipakai untuk dua
+// jalur login: (1) Login dengan Google — cocokkan email ke dokumen ini; (2) Login manual
+// Username + Password — username di dokumen ini dipetakan ke email, lalu email+password
+// diverifikasi lewat Firebase Auth sungguhan (lihat tambahAkunPortal & loginAkunPortal di
+// firestore.ts). Password TIDAK disimpan di sini — hanya tersimpan aman di Firebase Auth.
+export interface AkunPortal {
+  id: string;
+  username: string; // disimpan lowercase & trim, unik per akun
+  email: string; // disimpan lowercase & trim, unik per akun (dipakai sebagai identitas Firebase Auth)
+  role: 'HRD' | 'HOD';
+  divisi?: string; // wajib diisi kalau role === 'HOD' (1 akun = 1 divisi, sama seperti Kode Akses HOD)
+  createdAt: number;
+}
+
 export interface ToastMessage {
   id: string;
   type: 'success' | 'error';

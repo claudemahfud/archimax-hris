@@ -68,6 +68,32 @@ HOD per divisi bisa diganti langsung dari app (tersimpan ke `settings/aksesHrd` 
   `hitungSoftSkills()` di Code.gs asli.
 - 8 Aspek Hard Skill per Divisi (hardcode) — `ASPEK_HARDSKILL_PER_DIVISI` di file yang sama.
 
+### Akun Portal HRD/HOD — Username, Password & Email (+ Magic Link Reset Password)
+
+Superadmin bisa mendaftarkan akun HRD/HOD lewat tombol **"+ Daftarkan Akun HRD/HOD"** di
+Welcome Page. Form pendaftaran berisi 3 field: **Username**, **Password**, **Email**.
+
+- `akunPortal/{id}` — `{ username, email, role: 'HRD'|'HOD', divisi?, createdAt }`. Password
+  **tidak** disimpan di sini — hanya tersimpan aman di **Firebase Authentication** (dibuat via
+  `createUserWithEmailAndPassword`, lihat `daftarkanAkunPortal()` di
+  `src/shared/lib/firestore.ts`). Pembuatan akun baru memakai instance Firebase App KEDUA
+  (`secondaryAuth` di `src/shared/lib/firebase.ts`) supaya sesi Superadmin yang sedang login
+  tidak ikut ter-sign-out/tertimpa.
+- Login akun HRD/HOD bisa lewat 2 jalur: (1) **Username/Email + Password** di form Login utama
+  (`loginAkunPortal()`), atau (2) **Login dengan Google** (email harus cocok dengan yang
+  didaftarkan, jalur lama yang sudah ada sebelumnya).
+- **Magic Link Reset Password** — link **"Lupa Password? / Ganti Password"** di form Login
+  memakai `sendPasswordResetEmail` (Firebase Auth) dengan `handleCodeInApp: true`, sehingga
+  email berisi link yang mengarah balik ke halaman `/reset-password` di app ini (bukan halaman
+  bawaan Firebase). Halaman itu (`src/pages/reset-password/`) memverifikasi `oobCode` lalu
+  membiarkan user mengatur password baru — dipakai baik untuk "lupa password" maupun sekadar
+  "ganti password" (tidak perlu tahu password lama).
+
+> **Wajib di Firebase Console** sebelum fitur ini berfungsi: Authentication → Sign-in method →
+> aktifkan provider **Email/Password**. Kalau app di-deploy ke domain custom (mis. Vercel),
+> tambahkan juga domain tsb ke **Authorized domains** — kalau tidak, `sendPasswordResetEmail`
+> akan gagal dengan error `auth/unauthorized-continue-uri`.
+
 ### Catatan keamanan PIN & Superadmin
 
 Verifikasi Kode Akses dan login Superadmin (username/password) saat ini berjalan di client

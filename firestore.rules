@@ -21,7 +21,19 @@ service cloud.firestore {
       allow read: if true;
       // companyInfo: konten umum (Visi Misi, Tata Tertib, Kebijakan Reward) yang diedit HRD
       // lewat halaman "Profil Perusahaan" dan dibaca publik di semua halaman Rapor Online.
-      allow write: if docId == 'aksesHrd' || docId == 'aksesHod' || docId == 'companyInfo';
+      // whitelistSuperadmin: daftar email yang boleh login Google sebagai Superadmin, diatur
+      // Superadmin sendiri lewat halaman "Ganti Kode Akses".
+      allow write: if docId == 'aksesHrd' || docId == 'aksesHod' || docId == 'companyInfo' || docId == 'whitelistSuperadmin';
+    }
+
+    // akunPortal: pendaftaran Username + Email HRD/HOD (login via Username/Password ATAU Google)
+    // oleh Superadmin lewat Welcome Page. Password akun TIDAK disimpan di sini — hanya di
+    // Firebase Authentication (lihat daftarkanAkunPortal di src/shared/lib/firestore.ts). Sama
+    // seperti karyawan/penilaianKpi, proteksi baca/tulis dokumen ini berjalan di sisi client
+    // (belum ada Firebase Auth custom claims) — dicatat sebagai catatan keamanan yang sama
+    // dengan bagian lain.
+    match /akunPortal/{docId} {
+      allow read, write: if true;
     }
   }
 }
