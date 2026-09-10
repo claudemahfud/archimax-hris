@@ -190,11 +190,6 @@ export default function Landing() {
               <AppleIcon /> Login dengan Apple ID
               <span className="badge badge-soon">Segera Hadir</span>
             </button>
-
-            <div className="landing-footer-links">
-              <Link to={ROUTES.HRD_AKSES} className="link-muted">Master File HRD</Link>
-              <Link to={ROUTES.HOD_AKSES} className="link-muted">Portal HOD</Link>
-            </div>
           </div>
         )}
       </div>
