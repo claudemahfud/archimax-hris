@@ -11,7 +11,7 @@
 // 1. Baris header+data (baris 1-2) → dianggap sumber utama untuk field yang tersedia di sana
 //    (field finansial, tanggal lahir, NIK, dst — ini yang konsisten dengan Master File HRD).
 // 2. Blok "Label : Nilai" → dipakai untuk field yang TIDAK ada di baris header+data
-//    (Nama Lengkap, Jabatan, Divisi, Grade Jabatan, dst).
+//    (Nama Lengkap, Jabatan, Divisi, dst).
 // 3. Kalau field penting kosong di keduanya, atau nilainya beda signifikan antara sumber 1 & 2
 //    (mis. NIK di baris atas ≠ NIK di blok cetak) → dicatat di `peringatan` supaya HRD cek manual
 //    sebelum data disimpan, TIDAK ditebak sendiri oleh sistem.
@@ -134,7 +134,6 @@ export async function parseKaryawanExcel(file: File): Promise<HasilImportExcel> 
     namaPanggilan: ambilField(grid, ['Nama Panggilan'], ['Nama Panggilan'], peringatan, 'Nama Panggilan'),
     jabatan: ambilField(grid, ['Jabatan'], ['Jabatan'], peringatan, 'Jabatan', true),
     divisi: ambilField(grid, ['Divisi'], ['Divisi'], peringatan, 'Divisi', true),
-    gradeJabatan: ambilField(grid, ['Grade Jabatan'], ['Grade Jabatan'], peringatan, 'Grade Jabatan'),
     bergabungSejak: ambilField(grid, ['Bergabung Sejak'], ['Bergabung Sejak'], peringatan, 'Bergabung Sejak'),
     pengalamanKerja: ambilField(grid, ['Pengalaman Kerja'], ['Pengalaman Kerja'], peringatan, 'Pengalaman Kerja'),
     statusKaryawan: ambilField(grid, ['Status Karyawan'], ['Status Karyawan'], peringatan, 'Status Karyawan'),
@@ -161,7 +160,7 @@ export async function parseKaryawanExcel(file: File): Promise<HasilImportExcel> 
     jumlahIstri: toAngka(ambilDariHeaderRow(grid, ['Jumlah Istri'])),
     jumlahAnak: toAngka(ambilDariHeaderRow(grid, ['Jumlah Anak'])),
     pendidikanTerakhir: ambilField(grid, ['Pendidikan Terakhir'], ['Pendidikan Terakhir'], peringatan, 'Pendidikan Terakhir'),
-    levelUser: (levelUserRaw === 'HOD' ? 'HOD' : 'Staff'),
+    levelUser: (levelUserRaw === 'HOD' ? 'HOD' : levelUserRaw === 'EKSEKUTIF' ? 'EKSEKUTIF' : 'Staff'),
     fotoUrl: '',
     kodeAksesRapor: '',
   };

@@ -225,7 +225,6 @@ export default function RaporKaryawan() {
               <Info label="NIP" value={karyawan.nip} />
               <Info label="Jabatan" value={karyawan.jabatan} />
               <Info label="Divisi" value={karyawan.divisi} />
-              <Info label="Grade Jabatan" value={karyawan.gradeJabatan} />
               <Info label="Status Karyawan" value={karyawan.statusKaryawan} />
               <Info label="Bergabung Sejak" value={String(karyawan.bergabungSejak)} />
               <Info label="Pengalaman Kerja" value={karyawan.pengalamanKerja} />

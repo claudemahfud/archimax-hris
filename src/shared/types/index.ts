@@ -1,4 +1,4 @@
-export type LevelUser = 'Staff' | 'HOD';
+export type LevelUser = 'Staff' | 'HOD' | 'EKSEKUTIF';
 
 export interface Karyawan {
   id: string;
@@ -7,7 +7,6 @@ export interface Karyawan {
   namaPanggilan: string;
   jabatan: string;
   divisi: string;
-  gradeJabatan: string;
   bergabungSejak: string;
   pengalamanKerja: string;
   statusKaryawan: string;

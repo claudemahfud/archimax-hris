@@ -49,11 +49,11 @@ export default function Penilaian() {
       <PortalNav title="Master File HRD" items={NAV_ITEMS} onKeluar={keluar} />
       <div className="page">
         <h1>Form Penilaian Karyawan</h1>
-        <p>Master File HRD hanya menilai KPI untuk karyawan dengan Level User <strong>HOD</strong>. Penilaian Staff dilakukan HOD masing-masing divisi lewat Portal HOD.</p>
+        <p>Master File HRD hanya menilai KPI untuk karyawan dengan Level User <strong>HOD</strong> atau <strong>EKSEKUTIF</strong>. Penilaian Staff dilakukan HOD masing-masing divisi lewat Portal HOD.</p>
         {loading ? (
-          <Spinner label="Memuat daftar HOD..." />
+          <Spinner label="Memuat daftar HOD & EKSEKUTIF..." />
         ) : hodList.length === 0 ? (
-          <p className="card">Belum ada karyawan Level User HOD terdaftar. Tambahkan lewat menu Kelola Karyawan.</p>
+          <p className="card">Belum ada karyawan Level User HOD/EKSEKUTIF terdaftar. Tambahkan lewat menu Kelola Karyawan.</p>
         ) : (
           <KpiForm targets={hodList} dinilaiOleh="HRD" />
         )}

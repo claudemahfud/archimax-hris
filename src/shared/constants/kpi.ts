@@ -8,6 +8,11 @@ export const DAFTAR_DIVISI = [
   'FATA',
   'Human Growth',
   'Super Legal',
+  'EKSEKUTIF HOLDER',
+  'Drafter',
+  'PACKING',
+  'Operasional',
+  'UMUM',
 ] as const;
 
 export type NamaDivisi = (typeof DAFTAR_DIVISI)[number];
@@ -31,6 +36,11 @@ export const ASPEK_HARDSKILL_PER_DIVISI: Record<string, string[]> = {
   FATA: ASPEK_HARDSKILL_DEFAULT,
   'Human Growth': ASPEK_HARDSKILL_DEFAULT,
   'Super Legal': ASPEK_HARDSKILL_DEFAULT,
+  'EKSEKUTIF HOLDER': ASPEK_HARDSKILL_DEFAULT,
+  Drafter: ASPEK_HARDSKILL_DEFAULT,
+  PACKING: ASPEK_HARDSKILL_DEFAULT,
+  Operasional: ASPEK_HARDSKILL_DEFAULT,
+  UMUM: ASPEK_HARDSKILL_DEFAULT,
 };
 
 export function getAspekHardSkill(divisi: string): string[] {

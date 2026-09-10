@@ -21,9 +21,11 @@ export async function listKaryawan(divisi?: string): Promise<Karyawan[]> {
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) }));
 }
 
+// Dinilai lewat Master File HRD: HOD dan EKSEKUTIF (keduanya level "atas", bukan Staff
+// yang dinilai HOD masing-masing divisi lewat Portal HOD).
 export async function listKaryawanHod(): Promise<Karyawan[]> {
   const col = collection(db, KARYAWAN_COL);
-  const q = query(col, where('levelUser', '==', 'HOD'));
+  const q = query(col, where('levelUser', 'in', ['HOD', 'EKSEKUTIF']));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) }));
 }

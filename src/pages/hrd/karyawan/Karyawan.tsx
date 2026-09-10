@@ -23,7 +23,7 @@ const NAV_ITEMS = [
 type FormState = Omit<KaryawanType, 'id' | 'createdAt' | 'updatedAt'>;
 
 const FORM_KOSONG: FormState = {
-  nip: '', namaLengkap: '', namaPanggilan: '', jabatan: '', divisi: DAFTAR_DIVISI[0], gradeJabatan: '',
+  nip: '', namaLengkap: '', namaPanggilan: '', jabatan: '', divisi: DAFTAR_DIVISI[0],
   bergabungSejak: '', pengalamanKerja: '', statusKaryawan: '', masaKontrak: '',
   gajiPokok: 0, tunjanganKehadiran: 0, tunjanganKompetensi: 0, tunjanganJabatan: 0,
   tunjanganTransportasi: 0, performanceInsentive: 0, estimasiTakeHomePay: 0,
@@ -296,16 +296,16 @@ export default function Karyawan() {
                 {DAFTAR_DIVISI.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
-            <Field label="Grade Jabatan" value={form.gradeJabatan} onChange={(v) => updateField('gradeJabatan', v)} span={3} />
             <Field label="Bergabung Sejak" type="date" value={form.bergabungSejak} onChange={(v) => updateField('bergabungSejak', v)} span={3} />
             <Field label="Pengalaman Kerja" value={form.pengalamanKerja} onChange={(v) => updateField('pengalamanKerja', v)} span={6} />
             <Field label="Status Karyawan" value={form.statusKaryawan} onChange={(v) => updateField('statusKaryawan', v)} span={4} />
             <Field label="Masa Kontrak" type="date" value={form.masaKontrak} onChange={(v) => updateField('masaKontrak', v)} span={3} />
             <div className="form-field span-3">
               <label htmlFor="levelUser">Level User</label>
-              <select id="levelUser" value={form.levelUser} onChange={(e) => updateField('levelUser', e.target.value as 'Staff' | 'HOD')} required>
+              <select id="levelUser" value={form.levelUser} onChange={(e) => updateField('levelUser', e.target.value as 'Staff' | 'HOD' | 'EKSEKUTIF')} required>
                 <option value="Staff">Staff</option>
                 <option value="HOD">HOD</option>
+                <option value="EKSEKUTIF">EKSEKUTIF</option>
               </select>
             </div>
             <Field

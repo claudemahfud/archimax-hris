@@ -89,7 +89,7 @@ export default function Dashboard() {
       <PortalNav title="Master File HRD" items={NAV_ITEMS} onKeluar={keluar} />
       <div className="page">
         <h1>Homepage &amp; Grafik</h1>
-        <p>Tren performa KPI perusahaan dan ranking Level User HOD.</p>
+        <p>Tren performa KPI perusahaan dan ranking Level User HOD/EKSEKUTIF.</p>
 
         <div className="card">
           <h2>Tren Skor Rata-rata Perusahaan</h2>
@@ -117,20 +117,20 @@ export default function Dashboard() {
         </div>
 
         <div className="card">
-          <h2>Ranking Level User HOD</h2>
+          <h2>Ranking Level User HOD/EKSEKUTIF</h2>
           {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
           {loading ? (
             <>
               <div className="skeleton-row" /><div className="skeleton-row" /><div className="skeleton-row" />
             </>
           ) : ranking.length === 0 ? (
-            <p>Belum ada karyawan dengan Level User HOD terdaftar.</p>
+            <p>Belum ada karyawan dengan Level User HOD/EKSEKUTIF terdaftar.</p>
           ) : (
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Nama HOD</th><th>Divisi</th><th>Periode Terakhir</th>
+                    <th>Nama</th><th>Divisi</th><th>Periode Terakhir</th>
                     <th>Skor Hard Skill</th><th>Skor Kedisiplinan</th>
                   </tr>
                 </thead>
