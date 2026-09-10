@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type TouchEvent } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement,
   RadialLinearScale, Tooltip, Legend,
@@ -8,6 +8,7 @@ import { Line, Radar, Bar } from 'react-chartjs-2';
 import { LOGO_ARCHIMAX_URL } from '../../shared/constants/branding';
 import { Spinner } from '../../shared/components/Loading';
 import { getKaryawanUntukRapor, listRiwayatKpi, getCompanyInfo, kodeAksesRaporDefault } from '../../shared/lib/firestore';
+import { ROUTES } from '../../router/routePaths';
 import { getAspekHardSkill, POIN_PENGURANG } from '../../shared/constants/kpi';
 import type { Karyawan, PenilaianKpi, CompanyInfo } from '../../shared/types';
 
@@ -150,7 +151,9 @@ export default function RaporKaryawan() {
     return (
       <div className="gate-wrap">
         <form className="card gate-card" onSubmit={handleVerifikasi}>
-          <img src={LOGO_ARCHIMAX_URL} alt="Logo perusahaan" style={{ height: 44, marginBottom: 12 }} />
+          <Link to={ROUTES.LANDING} aria-label="Kembali ke Welcome Page">
+            <img src={LOGO_ARCHIMAX_URL} alt="Logo perusahaan" style={{ height: 44, marginBottom: 12 }} />
+          </Link>
           <h1>Rapor Online</h1>
           <p>Halo, <strong>{karyawan.namaLengkap}</strong>. Masukkan PIN yang diberikan HRD untuk melihat rapor Anda.</p>
           <div className="form-field">
@@ -178,7 +181,9 @@ export default function RaporKaryawan() {
   return (
     <div>
       <nav className="nav-bar no-print" aria-label="Rapor Online">
-        <img src={LOGO_ARCHIMAX_URL} alt="Logo perusahaan" style={{ height: 38, width: 'auto', maxWidth: 140, objectFit: 'contain', marginRight: 4 }} />
+        <Link to={ROUTES.LANDING} aria-label="Kembali ke Welcome Page" style={{ display: 'inline-flex', marginRight: 4 }}>
+          <img src={LOGO_ARCHIMAX_URL} alt="Logo perusahaan" style={{ height: 38, width: 'auto', maxWidth: 140, objectFit: 'contain' }} />
+        </Link>
         <span className="nav-brand">Rapor Online — {karyawan.namaLengkap}</span>
       </nav>
       <div className="cetak-header">

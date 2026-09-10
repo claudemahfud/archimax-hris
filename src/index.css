@@ -263,6 +263,64 @@ table.data-table tbody tr:nth-child(even) { background: rgba(247, 245, 242, 0.6)
 .badge { display: inline-block; padding: 5px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
 .badge-good { background: #E6F4EA; color: var(--success); }
 .badge-bad { background: #FBE7E5; color: var(--danger); }
+.badge-soon { background: var(--grey-light); color: var(--grey-medium); font-size: 0.7rem; padding: 3px 9px; margin-left: auto; text-shadow: none; }
+
+.btn-apple { justify-content: flex-start; gap: 10px; }
+.btn-apple:disabled { opacity: 1; color: var(--grey-medium); cursor: not-allowed; }
+
+/* ==== Kartu Login WordPress-style (Welcome Page) ==== */
+.login-title { text-align: center; margin-bottom: 4px; }
+.login-subtitle { text-align: center; color: var(--grey-medium); font-size: 0.92rem; margin: 0 0 22px; }
+.login-logo-link { display: block; margin: 0 auto 20px; width: fit-content; }
+.dashboard-links { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+.landing-footer-links { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--grey-light); display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; }
+
+/* ==== Welcome Page — latar geometris oranye (tanpa navbar) ==== */
+.welcome-scene {
+  position: relative; overflow: hidden;
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: var(--grey-bg);
+}
+.welcome-deco { position: absolute; inset: 0; overflow: hidden; z-index: 0; }
+.deco-wedge {
+  position: absolute; width: 140%; height: 140%;
+}
+.deco-wedge-dark {
+  top: -20%; right: -30%;
+  background: linear-gradient(135deg, var(--orange-800) 0%, var(--orange-600) 100%);
+  clip-path: polygon(100% 0, 100% 65%, 35% 0);
+}
+.deco-wedge-mid {
+  bottom: -20%; left: -30%;
+  background: linear-gradient(135deg, var(--orange-500) 0%, var(--orange-400) 100%);
+  clip-path: polygon(0 100%, 0 35%, 65% 100%);
+}
+.deco-facet { position: absolute; border-radius: 4px; }
+.deco-facet-light { background: rgba(255, 255, 255, 0.30); }
+.deco-facet-dark { background: rgba(154, 54, 8, 0.18); }
+
+.welcome-card {
+  position: relative; z-index: 1;
+  max-width: 460px; width: 100%; text-align: center;
+  border-top: 4px solid transparent;
+  border-image: var(--gradient-brand) 1;
+  box-shadow: var(--shadow-card-hover);
+}
+.welcome-heading {
+  font-size: clamp(2.1rem, 6vw, 2.8rem); font-weight: 900; letter-spacing: -0.02em;
+  background: var(--gradient-brand); -webkit-background-clip: text; background-clip: text; color: transparent;
+  margin: 0 0 18px;
+}
+.welcome-hris-label { font-weight: 800; font-size: 1.02rem; color: var(--grey-dark); margin: 14px 0 8px; }
+.welcome-desc { color: var(--grey-medium); font-size: 0.92rem; margin: 0 0 22px; }
+.welcome-login-btn { min-width: 180px; font-size: 1.02rem; padding: 13px 28px; }
+.welcome-back-btn { background: none; border: none; cursor: pointer; display: block; margin: 0 0 14px; text-align: left; }
+
+@keyframes welcomeCardOpen {
+  from { opacity: 0; transform: scale(0.92) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.welcome-anim-in { animation: welcomeCardOpen 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 /* ==== Gerbang Kode Akses / Halaman Landing ==== */
 .gate-wrap {

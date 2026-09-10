@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { LOGO_ARCHIMAX_URL } from '../constants/branding';
+import { ROUTES } from '../../router/routePaths';
 
 interface NavItem { to: string; label: string }
 
@@ -9,11 +10,13 @@ export function PortalNav({ title, items, onKeluar }: { title: string; items: Na
 
   return (
     <nav className="nav-bar" aria-label={title}>
-      <img
-        src={LOGO_ARCHIMAX_URL}
-        alt="Logo PT Archimax Architect Indonesia"
-        style={{ height: 38, width: 'auto', maxWidth: 140, objectFit: 'contain', marginRight: 4 }}
-      />
+      <Link to={ROUTES.LANDING} aria-label="Kembali ke Welcome Page" style={{ display: 'inline-flex', marginRight: 4 }}>
+        <img
+          src={LOGO_ARCHIMAX_URL}
+          alt="Logo PT Archimax Architect Indonesia"
+          style={{ height: 38, width: 'auto', maxWidth: 140, objectFit: 'contain' }}
+        />
+      </Link>
       <span className="nav-brand">{title}</span>
       <button
         type="button"
