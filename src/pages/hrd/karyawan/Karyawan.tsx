@@ -107,7 +107,10 @@ export default function Karyawan() {
 
   function mulaiEdit(k: KaryawanType) {
     const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = k;
-    setForm(rest);
+    // Gabung dengan FORM_KOSONG supaya field yang belum ada di dokumen lama (mis. karyawan
+    // yang dibuat sebelum field "Brand" ditambahkan) tetap dapat nilai default yang benar-benar
+    // tersimpan di state form — bukan cuma tampilan default select di browser yang menipu.
+    setForm({ ...FORM_KOSONG, ...rest });
     setEditId(k.id);
     setFormTerbuka(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -416,7 +419,7 @@ export default function Karyawan() {
                       </td>
                       <td>{k.jabatan}</td>
                       <td>{k.divisi}</td>
-                      <td>{k.brand}</td>
+                      <td>{k.brand || '-'}</td>
                       <td>
                         <button
                           type="button"
