@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { hapusSesiAkun } from '../lib/akunSession';
 
 export function useAksesHod() {
   const [terverifikasi] = useState<boolean>(() => sessionStorage.getItem('akses_hod') === '1');
@@ -7,6 +8,7 @@ export function useAksesHod() {
   const keluar = useCallback(() => {
     sessionStorage.removeItem('akses_hod');
     sessionStorage.removeItem('akses_hod_divisi');
+    hapusSesiAkun();
     window.location.reload();
   }, []);
 

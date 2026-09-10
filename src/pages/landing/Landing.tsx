@@ -7,8 +7,9 @@ import { DAFTAR_DIVISI } from '../../shared/constants/kpi';
 import { auth, googleProvider } from '../../shared/lib/firebase';
 import {
   getWhitelistSuperadmin, cariAkunPortalByEmail, daftarkanAkunPortal, hapusAkunPortal, listAkunPortal,
-  loginAkunPortal, kirimMagicLinkResetPassword,
+  loginAkunPortal, kirimMagicLinkResetPassword, ubahUsernameAkunPortal, resetEmailPasswordAkunPortal,
 } from '../../shared/lib/firestore';
+import { simpanSesiAkun } from '../../shared/lib/akunSession';
 import type { AkunPortal } from '../../shared/types';
 import { useAksesSuperadmin } from '../../shared/hooks/useAksesSuperadmin';
 import { useAksesGate } from '../../shared/hooks/useAksesGate';
@@ -63,6 +64,17 @@ export default function Landing() {
   const [loadingDaftarAkun, setLoadingDaftarAkun] = useState(false);
   const [daftarAkun, setDaftarAkun] = useState<AkunPortal[]>([]);
 
+  // Ubah Akun (Username / Email+Password) — Username bisa diubah bebas (field Firestore
+  // biasa); Email+Password HARUS diubah BERSAMAAN (keterbatasan keamanan Firebase Auth: client
+  // tidak bisa mengganti kredensial akun orang lain tanpa tahu password lama, jadi yang
+  // dilakukan sebenarnya membuat kredensial baru — lihat resetEmailPasswordAkunPortal).
+  const [editAkunId, setEditAkunId] = useState<string | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editKonfirmasiPassword, setEditKonfirmasiPassword] = useState('');
+  const [loadingEditAkun, setLoadingEditAkun] = useState(false);
+
   // Lupa/Ganti Password — Magic Link Reset via Firebase (lihat kirimMagicLinkResetPassword
   // di shared/lib/firestore.ts). Sama-sama mengirim email berisi link ke /reset-password.
   const [lupaPasswordTerbuka, setLupaPasswordTerbuka] = useState(false);
@@ -90,6 +102,7 @@ export default function Landing() {
       const akun = await loginAkunPortal(username, password);
       if (akun?.role === 'HRD') {
         sessionStorage.setItem('akses_hrd', '1');
+        simpanSesiAkun({ username: akun.username, email: akun.email });
         showToast('success', 'Login berhasil. Selamat datang, HRD.');
         navigate(ROUTES.HRD_DASHBOARD);
         return;
@@ -97,6 +110,7 @@ export default function Landing() {
       if (akun?.role === 'HOD' && akun.divisi) {
         sessionStorage.setItem('akses_hod', '1');
         sessionStorage.setItem('akses_hod_divisi', akun.divisi);
+        simpanSesiAkun({ username: akun.username, email: akun.email });
         showToast('success', `Login berhasil. Selamat datang, HOD ${akun.divisi}.`);
         navigate(ROUTES.HOD_MONITORING);
         return;
@@ -148,6 +162,7 @@ export default function Landing() {
       const akun = await cariAkunPortalByEmail(email);
       if (akun?.role === 'HRD') {
         sessionStorage.setItem('akses_hrd', '1');
+        simpanSesiAkun({ username: akun.username, email: akun.email });
         showToast('success', 'Login dengan Google berhasil. Selamat datang, HRD.');
         navigate(ROUTES.HRD_DASHBOARD);
         return;
@@ -155,6 +170,7 @@ export default function Landing() {
       if (akun?.role === 'HOD' && akun.divisi) {
         sessionStorage.setItem('akses_hod', '1');
         sessionStorage.setItem('akses_hod_divisi', akun.divisi);
+        simpanSesiAkun({ username: akun.username, email: akun.email });
         showToast('success', `Login dengan Google berhasil. Selamat datang, HOD ${akun.divisi}.`);
         navigate(ROUTES.HOD_MONITORING);
         return;
@@ -215,6 +231,59 @@ export default function Landing() {
     }
   }
 
+  function bukaEditAkun(akun: AkunPortal) {
+    setEditAkunId(akun.id);
+    setEditUsername(akun.username);
+    setEditEmail(akun.email);
+    setEditPassword('');
+    setEditKonfirmasiPassword('');
+  }
+
+  function tutupEditAkun() {
+    setEditAkunId(null);
+    setEditUsername('');
+    setEditEmail('');
+    setEditPassword('');
+    setEditKonfirmasiPassword('');
+  }
+
+  async function handleSimpanEditAkun(e: FormEvent) {
+    e.preventDefault();
+    if (!editAkunId) return;
+    const akunAsli = daftarAkun.find((a) => a.id === editAkunId);
+    if (!akunAsli) return;
+
+    const usernameBaru = editUsername.trim();
+    const emailBaru = editEmail.trim();
+    const emailBerubah = emailBaru.toLowerCase() !== akunAsli.email.toLowerCase();
+
+    if (emailBerubah && !editPassword) {
+      showToast('error', 'Untuk mengubah Email, isi juga Password baru — Email & Password harus diganti bersamaan.');
+      return;
+    }
+    if (editPassword && editPassword !== editKonfirmasiPassword) {
+      showToast('error', 'Konfirmasi Password baru tidak sama.');
+      return;
+    }
+
+    setLoadingEditAkun(true);
+    try {
+      if (usernameBaru && usernameBaru.toLowerCase() !== akunAsli.username.toLowerCase()) {
+        await ubahUsernameAkunPortal(editAkunId, usernameBaru);
+      }
+      if (editPassword) {
+        await resetEmailPasswordAkunPortal(editAkunId, { email: emailBaru, password: editPassword });
+      }
+      setDaftarAkun(await listAkunPortal());
+      showToast('success', 'Akun berhasil diperbarui.');
+      tutupEditAkun();
+    } catch (err) {
+      showToast('error', `Gagal memperbarui akun: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoadingEditAkun(false);
+    }
+  }
+
   const Logo = (size: number) => (
     <Link to={ROUTES.LANDING} className="login-logo-link" aria-label="Beranda">
       <img
@@ -239,6 +308,7 @@ export default function Landing() {
               <Link to={ROUTES.HRD_DASHBOARD} className="btn">Master File HRD</Link>
               <Link to={ROUTES.HOD_AKSES} className="btn btn-secondary">Portal HOD</Link>
               <Link to={ROUTES.GANTI_KODE_AKSES} className="btn btn-secondary">Ganti Kode Akses</Link>
+              <Link to={ROUTES.PROFIL} className="btn btn-secondary">Profil Saya</Link>
             </div>
 
             <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--grey-light, #e5e5e5)', textAlign: 'left' }}>
@@ -311,6 +381,11 @@ export default function Landing() {
                       required
                     />
                   </div>
+                  <p style={{ fontSize: '0.82rem', marginTop: -6, marginBottom: 10 }}>
+                    Password di atas hanya berlaku untuk login ke website ini — <strong>bukan</strong>
+                    {' '}password akun Google/Gmail pribadi. Boleh pakai alamat Gmail yang sudah ada,
+                    aman: sistem ini tidak pernah membaca/mengubah password akun Google aslinya.
+                  </p>
                   {daftarMode === 'hod' && (
                     <div className="form-field">
                       <label htmlFor="divisiAkunBaruSelect">Divisi</label>
@@ -337,22 +412,93 @@ export default function Landing() {
                     <li
                       key={akun.id}
                       style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
                         border: '1px solid var(--grey-light, #e5e5e5)', borderRadius: 10, padding: '8px 12px',
                       }}
                     >
-                      <span>
-                        <strong>{akun.role}</strong>{akun.divisi ? ` · ${akun.divisi}` : ''} — {akun.username} ({akun.email})
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        disabled={loadingDaftarAkun}
-                        onClick={() => handleHapusAkun(akun)}
-                        style={{ padding: '4px 12px', fontSize: '0.85rem', flexShrink: 0 }}
-                      >
-                        Hapus
-                      </button>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                        <span>
+                          <strong>{akun.role}</strong>{akun.divisi ? ` · ${akun.divisi}` : ''} — {akun.username} ({akun.email})
+                        </span>
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            disabled={loadingDaftarAkun}
+                            onClick={() => (editAkunId === akun.id ? tutupEditAkun() : bukaEditAkun(akun))}
+                            style={{ padding: '4px 12px', fontSize: '0.85rem' }}
+                          >
+                            {editAkunId === akun.id ? 'Batal' : 'Ubah'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            disabled={loadingDaftarAkun}
+                            onClick={() => handleHapusAkun(akun)}
+                            style={{ padding: '4px 12px', fontSize: '0.85rem' }}
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </div>
+
+                      {editAkunId === akun.id && (
+                        <form onSubmit={handleSimpanEditAkun} style={{ marginTop: 12, borderTop: '1px dashed var(--grey-light, #e5e5e5)', paddingTop: 12 }}>
+                          <div className="form-field">
+                            <label htmlFor={`editUsername-${akun.id}`}>Username</label>
+                            <input
+                              id={`editUsername-${akun.id}`}
+                              type="text"
+                              value={editUsername}
+                              onChange={(e) => setEditUsername(e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="form-field">
+                            <label htmlFor={`editEmail-${akun.id}`}>Email</label>
+                            <input
+                              id={`editEmail-${akun.id}`}
+                              type="email"
+                              value={editEmail}
+                              onChange={(e) => setEditEmail(e.target.value)}
+                              required
+                            />
+                          </div>
+                          <p style={{ fontSize: '0.82rem', marginTop: -6, marginBottom: 10 }}>
+                            Ganti Email hanya berlaku kalau Password baru juga diisi (Email &amp;
+                            Password saling terikat — keduanya diganti bersamaan). Kosongkan
+                            Password kalau cuma mau mengubah Username.
+                          </p>
+                          <div className="form-field">
+                            <label htmlFor={`editPassword-${akun.id}`}>Password Baru (opsional)</label>
+                            <input
+                              id={`editPassword-${akun.id}`}
+                              type="password"
+                              value={editPassword}
+                              onChange={(e) => setEditPassword(e.target.value)}
+                              placeholder="Kosongkan kalau tidak diganti"
+                              minLength={6}
+                              autoComplete="new-password"
+                            />
+                          </div>
+                          {editPassword && (
+                            <div className="form-field">
+                              <label htmlFor={`editKonfirmasiPassword-${akun.id}`}>Konfirmasi Password Baru</label>
+                              <input
+                                id={`editKonfirmasiPassword-${akun.id}`}
+                                type="password"
+                                value={editKonfirmasiPassword}
+                                onChange={(e) => setEditKonfirmasiPassword(e.target.value)}
+                                required
+                                minLength={6}
+                                autoComplete="new-password"
+                              />
+                            </div>
+                          )}
+                          <button type="submit" className="btn" disabled={loadingEditAkun} style={{ width: '100%' }}>
+                            {loadingEditAkun ? <Spinner label="Menyimpan..." /> : 'Simpan Perubahan'}
+                          </button>
+                        </form>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -377,6 +523,7 @@ export default function Landing() {
             <div className="dashboard-links">
               <Link to={ROUTES.HRD_DASHBOARD} className="btn">Master File HRD</Link>
               <Link to={ROUTES.HRD_KARYAWAN} className="btn btn-secondary">Kelola Karyawan</Link>
+              <Link to={ROUTES.PROFIL} className="btn btn-secondary">Profil Saya</Link>
             </div>
           </div>
         </div>
@@ -396,6 +543,7 @@ export default function Landing() {
             <p className="login-subtitle">Pilih portal yang ingin dikelola.</p>
             <div className="dashboard-links">
               <Link to={ROUTES.HOD_MONITORING} className="btn">Portal HOD</Link>
+              <Link to={ROUTES.PROFIL} className="btn btn-secondary">Profil Saya</Link>
             </div>
           </div>
         </div>
@@ -475,15 +623,16 @@ export default function Landing() {
               style={{ display: 'block', margin: '10px auto 0', textAlign: 'center' }}
               onClick={() => setLupaPasswordTerbuka((v) => !v)}
             >
-              Lupa Password? / Ganti Password
+              Lupa Password?
             </button>
 
             {lupaPasswordTerbuka && (
               <form onSubmit={handleLupaPassword} style={{ marginTop: 10 }}>
                 <p style={{ fontSize: '0.9rem' }}>
                   Masukkan Username atau Email akun HRD/HOD Anda. Kami akan mengirim Magic Link
-                  lewat email untuk mengatur password baru (berlaku juga untuk mengganti password
-                  meski Anda tidak lupa).
+                  lewat email untuk mengatur password baru — password ini hanya berlaku di
+                  website ini, sama sekali tidak menyentuh password akun Google/Gmail pribadi
+                  Anda.
                 </p>
                 <div className="form-field">
                   <label htmlFor="identitasLupaPasswordInput">Username atau Email</label>

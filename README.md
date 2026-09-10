@@ -82,12 +82,28 @@ Welcome Page. Form pendaftaran berisi 3 field: **Username**, **Password**, **Ema
 - Login akun HRD/HOD bisa lewat 2 jalur: (1) **Username/Email + Password** di form Login utama
   (`loginAkunPortal()`), atau (2) **Login dengan Google** (email harus cocok dengan yang
   didaftarkan, jalur lama yang sudah ada sebelumnya).
-- **Magic Link Reset Password** — link **"Lupa Password? / Ganti Password"** di form Login
-  memakai `sendPasswordResetEmail` (Firebase Auth) dengan `handleCodeInApp: true`, sehingga
-  email berisi link yang mengarah balik ke halaman `/reset-password` di app ini (bukan halaman
-  bawaan Firebase). Halaman itu (`src/pages/reset-password/`) memverifikasi `oobCode` lalu
-  membiarkan user mengatur password baru — dipakai baik untuk "lupa password" maupun sekadar
-  "ganti password" (tidak perlu tahu password lama).
+- **Ubah Akun** — Superadmin bisa mengubah **Username** kapan saja secara bebas (murni field
+  Firestore, lihat `ubahUsernameAkunPortal()`). Mengubah **Email** hanya bisa dilakukan
+  BERSAMAAN dengan Password baru (lihat `resetEmailPasswordAkunPortal()`) — ini keterbatasan
+  keamanan Firebase Auth: dari sisi client, Superadmin tidak bisa mengganti kredensial akun
+  ORANG LAIN tanpa tahu password lamanya, jadi yang sebenarnya terjadi adalah membuat kredensial
+  Firebase Auth baru (email+password baru) lalu memperbarui field `email` di Firestore supaya
+  Username-Email-Password tetap satu identitas yang terikat/konsisten. Akun Firebase Auth lama
+  (kalau email diganti) otomatis jadi tidak terpakai — aman diabaikan, atau dihapus manual lewat
+  Firebase Console kalau perlu beres-beres.
+- **Magic Link Reset Password** — link **"Lupa Password?"** di form Login (dan tombol "Kirim
+  Magic Link Ganti Password" di halaman **Profil Saya**, `/profil`, setelah login) memakai
+  `sendPasswordResetEmail` (Firebase Auth) dengan `handleCodeInApp: true`, sehingga email berisi
+  link yang mengarah balik ke halaman `/reset-password` di app ini (bukan halaman bawaan
+  Firebase). Halaman itu (`src/pages/reset-password/`) memverifikasi `oobCode` lalu membiarkan
+  user mengatur password baru — dipakai baik untuk "lupa password" maupun sekadar "ganti
+  password" (tidak perlu tahu password lama).
+
+  > **Penting:** Password akun HRD/HOD di atas HANYA berlaku untuk login ke website ini
+  > (tersimpan di Firebase Authentication milik project `archimax-hris`). Walaupun emailnya
+  > memakai alamat Gmail asli, sistem ini **sama sekali terpisah** dari akun Google pribadi
+  > pemilik email — Magic Link Reset Password tidak pernah membaca maupun mengubah password
+  > akun Google/Gmail aslinya.
 
 > **Wajib di Firebase Console** sebelum fitur ini berfungsi: Authentication → Sign-in method →
 > aktifkan provider **Email/Password**. Kalau app di-deploy ke domain custom (mis. Vercel),

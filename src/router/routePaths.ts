@@ -11,6 +11,7 @@ export const ROUTES = {
   HOD_PENILAIAN: '/hod/penilaian',
   GANTI_KODE_AKSES: '/ganti-kode-akses',
   RESET_PASSWORD: '/reset-password',
+  PROFIL: '/profil',
   RAPOR: '/rapor/:id',
   raporUrl: (id: string) => `/rapor/${id}`,
 } as const;

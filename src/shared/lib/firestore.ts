@@ -288,6 +288,48 @@ export async function hapusAkunPortal(id: string): Promise<void> {
 }
 
 /**
+ * Ubah Username saja (murni field Firestore, tidak menyentuh Firebase Auth sama sekali —
+ * Username hanya dipakai sebagai "nama panggilan" untuk mencari Email di koleksi ini, BUKAN
+ * identitas Firebase Auth). Email & Password tetap sama seperti sebelumnya setelah ini.
+ */
+export async function ubahUsernameAkunPortal(id: string, usernameBaru: string): Promise<void> {
+  const bersih = usernameBaru.toLowerCase().trim();
+  if (bersih.length < 3) throw new Error('Username minimal 3 karakter.');
+  const existing = await cariAkunPortalByUsername(bersih);
+  if (existing && existing.id !== id) throw new Error('Username ini sudah dipakai akun lain.');
+  await updateDoc(doc(db, AKUN_PORTAL_COL, id), { username: bersih });
+}
+
+/**
+ * Reset Email + Password SEKALIGUS untuk satu akun HRD/HOD yang sudah terdaftar.
+ *
+ * Catatan penting soal keterbatasan Firebase Auth (bukan bug, ini memang aturan keamanan
+ * Firebase): dari sisi client (tanpa server/Cloud Function + Admin SDK), Superadmin TIDAK BISA
+ * langsung mengubah email atau password milik akun ORANG LAIN begitu saja — hanya pemilik akun
+ * itu sendiri (setelah login sebagai dirinya) yang bisa. Karena itu, "reset" di sini bekerja
+ * dengan membuat akun Firebase Auth BARU (email + password baru) lewat `secondaryAuth`, lalu
+ * memperbarui field `email` di dokumen Firestore ini supaya tetap satu identitas yang sama
+ * (Username + Email + Password baru = satu paket yang saling terikat). Akun Firebase Auth LAMA
+ * (kalau emailnya berubah) otomatis jadi tidak terpakai lagi — aman diabaikan, atau dihapus
+ * manual lewat Firebase Console kalau mau beres-beres.
+ */
+export async function resetEmailPasswordAkunPortal(
+  id: string,
+  data: { email: string; password: string },
+): Promise<void> {
+  const emailBaru = data.email.toLowerCase().trim();
+  if (data.password.length < 6) throw new Error('Password minimal 6 karakter (ketentuan Firebase Auth).');
+  const existing = await cariAkunPortalByEmail(emailBaru);
+  if (existing && existing.id !== id) throw new Error('Email ini sudah dipakai akun lain.');
+
+  const kredensial = await createUserWithEmailAndPassword(secondaryAuth, emailBaru, data.password);
+  await signOut(secondaryAuth).catch(() => undefined);
+  void kredensial; // hanya perlu efek pembuatan akunnya, tidak perlu dipakai lagi di sini
+
+  await updateDoc(doc(db, AKUN_PORTAL_COL, id), { email: emailBaru });
+}
+
+/**
  * Login manual Username/Email + Password untuk akun HRD/HOD yang didaftarkan lewat
  * daftarkanAkunPortal(). Mengembalikan null kalau identitas tidak ditemukan di koleksi
  * akunPortal (biar pemanggil bisa lanjut cek jalur lain, mis. Superadmin/PIN); melempar
@@ -307,6 +349,12 @@ export async function loginAkunPortal(identitas: string, password: string): Prom
 // alamat email akun tersebut; link itu mengarah balik ke halaman /reset-password di app ini
 // (bukan halaman default Firebase) dengan kode aksi (oobCode) tertanam di URL. Di halaman
 // itu, user tinggal mengetik password baru — TANPA perlu tahu password lama.
+//
+// PENTING (sering disalahpahami): Password di sini adalah password LOGIN WEB INI SAJA,
+// tersimpan di Firebase Authentication milik project archimax-hris — SAMA SEKALI TERPISAH dari
+// akun Google/Gmail pribadi pemilik email, walaupun alamat emailnya kebetulan sama (mis. Gmail).
+// Magic Link Reset Password TIDAK PERNAH mengubah, membaca, atau menyentuh password akun Google
+// pribadi siapa pun — Firebase Auth Email/Password adalah sistem login terpisah milik app ini.
 // ============================================================
 
 function actionCodeSettingsResetPassword(): ActionCodeSettings {

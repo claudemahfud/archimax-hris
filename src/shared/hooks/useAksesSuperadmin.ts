@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { getSuperadminCredentials, getWhitelistSuperadmin } from '../lib/firestore';
+import { hapusSesiAkun } from '../lib/akunSession';
 
 // Catatan keamanan: sama seperti Kode Akses (lihat useAksesGate.ts), pengecekan username/password
 // di sini berjalan di client. Login Google memakai Firebase Auth sungguhan (popup akun Google),
@@ -59,6 +60,7 @@ export function useAksesSuperadmin() {
     sessionStorage.removeItem('akses_hrd');
     sessionStorage.removeItem('akses_hod');
     sessionStorage.removeItem('akses_hod_divisi');
+    hapusSesiAkun();
     setTerverifikasi(false);
     if (auth.currentUser) signOut(auth).catch(() => undefined);
   }, []);

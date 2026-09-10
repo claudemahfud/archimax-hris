@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { hapusSesiAkun } from '../lib/akunSession';
 
 // Catatan keamanan: pengecekan PIN di sini berjalan di client (parity dengan alur PIN GAS lama
 // yang di-deploy "Anyone"). Untuk produksi, sebaiknya validasi ulang lewat Firestore Security
@@ -18,6 +19,7 @@ export function useAksesGate(storageKey: string) {
 
   const keluar = useCallback(() => {
     sessionStorage.removeItem(storageKey);
+    hapusSesiAkun();
     setTerverifikasi(false);
   }, [storageKey]);
 

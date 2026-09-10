@@ -93,6 +93,10 @@ export default function ResetPassword() {
             <p style={{ textAlign: 'center' }}>
               Buat password baru untuk akun <strong>{email}</strong>.
             </p>
+            <p style={{ fontSize: '0.82rem', textAlign: 'center', color: 'var(--grey, #666)' }}>
+              Password ini hanya untuk login ke website Archimax HRIS — bukan password akun
+              Google/Gmail pribadi Anda.
+            </p>
             <div className="form-field">
               <label htmlFor="passwordBaruInput">Password Baru</label>
               <input
