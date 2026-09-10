@@ -7,6 +7,7 @@ export interface Karyawan {
   namaPanggilan: string;
   jabatan: string;
   divisi: string;
+  brand: string;
   bergabungSejak: string;
   pengalamanKerja: string;
   statusKaryawan: string;

@@ -18,6 +18,7 @@
 // ============================================================
 
 import * as XLSX from 'xlsx';
+import { DAFTAR_BRAND } from '../constants/brand';
 import type { Karyawan, HasilImportExcel, PenilaianKpiForm } from '../types';
 
 type Grid = (string | number | Date | null)[][];
@@ -112,6 +113,7 @@ function ambilField(
 }
 
 const HEADER_LEVEL_USER = ['Level User'];
+const HEADER_BRAND = ['Brand'];
 
 export async function parseKaryawanExcel(file: File): Promise<HasilImportExcel> {
   const buffer = await file.arrayBuffer();
@@ -127,6 +129,8 @@ export async function parseKaryawanExcel(file: File): Promise<HasilImportExcel> 
   const namaLengkap = ambilField(grid, ['Nama Lengkap'], ['Nama Lengkap', 'Nama'], peringatan, 'Nama Lengkap', true);
   const nip = ambilField(grid, ['NIP'], ['NIP'], peringatan, 'NIP', true);
   const levelUserRaw = (ambilDariHeaderRow(grid, HEADER_LEVEL_USER) as string) || 'Staff';
+  const brandRaw = (ambilDariHeaderRow(grid, HEADER_BRAND) as string) || '';
+  if (!brandRaw) peringatan.push('"Brand" tidak ditemukan di file, dikosongkan ke default Archimax — mohon cek manual.');
 
   const karyawan: Omit<Karyawan, 'id' | 'createdAt' | 'updatedAt'> = {
     nip,
@@ -134,6 +138,7 @@ export async function parseKaryawanExcel(file: File): Promise<HasilImportExcel> 
     namaPanggilan: ambilField(grid, ['Nama Panggilan'], ['Nama Panggilan'], peringatan, 'Nama Panggilan'),
     jabatan: ambilField(grid, ['Jabatan'], ['Jabatan'], peringatan, 'Jabatan', true),
     divisi: ambilField(grid, ['Divisi'], ['Divisi'], peringatan, 'Divisi', true),
+    brand: (DAFTAR_BRAND as readonly string[]).includes(brandRaw) ? brandRaw : DAFTAR_BRAND[0],
     bergabungSejak: ambilField(grid, ['Bergabung Sejak'], ['Bergabung Sejak'], peringatan, 'Bergabung Sejak'),
     pengalamanKerja: ambilField(grid, ['Pengalaman Kerja'], ['Pengalaman Kerja'], peringatan, 'Pengalaman Kerja'),
     statusKaryawan: ambilField(grid, ['Status Karyawan'], ['Status Karyawan'], peringatan, 'Status Karyawan'),

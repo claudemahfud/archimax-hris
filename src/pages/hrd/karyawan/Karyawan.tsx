@@ -10,6 +10,7 @@ import { listKaryawan, tambahKaryawan, editKaryawan, hapusKaryawan, kodeAksesRap
 import { uploadGambarKeCloudinary } from '../../../shared/lib/cloudinary';
 import { parseKaryawanExcel } from '../../../shared/lib/excelImport';
 import { DAFTAR_DIVISI } from '../../../shared/constants/kpi';
+import { DAFTAR_BRAND } from '../../../shared/constants/brand';
 import type { Karyawan as KaryawanType } from '../../../shared/types';
 
 const NAV_ITEMS = [
@@ -23,7 +24,7 @@ const NAV_ITEMS = [
 type FormState = Omit<KaryawanType, 'id' | 'createdAt' | 'updatedAt'>;
 
 const FORM_KOSONG: FormState = {
-  nip: '', namaLengkap: '', namaPanggilan: '', jabatan: '', divisi: DAFTAR_DIVISI[0],
+  nip: '', namaLengkap: '', namaPanggilan: '', jabatan: '', divisi: DAFTAR_DIVISI[0], brand: DAFTAR_BRAND[0],
   bergabungSejak: '', pengalamanKerja: '', statusKaryawan: '', masaKontrak: '',
   gajiPokok: 0, tunjanganKehadiran: 0, tunjanganKompetensi: 0, tunjanganJabatan: 0,
   tunjanganTransportasi: 0, performanceInsentive: 0, estimasiTakeHomePay: 0,
@@ -296,6 +297,12 @@ export default function Karyawan() {
                 {DAFTAR_DIVISI.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
+            <div className="form-field span-3">
+              <label htmlFor="brand">Brand</label>
+              <select id="brand" value={form.brand} onChange={(e) => updateField('brand', e.target.value)} required>
+                {DAFTAR_BRAND.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
             <Field label="Bergabung Sejak" type="date" value={form.bergabungSejak} onChange={(v) => updateField('bergabungSejak', v)} span={3} />
             <Field label="Pengalaman Kerja" value={form.pengalamanKerja} onChange={(v) => updateField('pengalamanKerja', v)} span={6} />
             <Field label="Status Karyawan" value={form.statusKaryawan} onChange={(v) => updateField('statusKaryawan', v)} span={4} />
@@ -378,7 +385,7 @@ export default function Karyawan() {
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
-                  <tr><th>Foto</th><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Level User</th><th>Rapor Online</th><th>Aksi</th></tr>
+                  <tr><th>Foto</th><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Brand</th><th>Rapor Online</th><th>Aksi</th></tr>
                 </thead>
                 <tbody>
                   {daftar.map((k) => (
@@ -399,10 +406,17 @@ export default function Karyawan() {
                           )}
                         </div>
                       </td>
-                      <td>{k.namaLengkap}</td>
+                      <td>
+                        <div style={{ lineHeight: 1.3 }}>
+                          <div style={{ fontWeight: 700 }}>{k.namaLengkap}</div>
+                          {k.namaPanggilan && (
+                            <div style={{ fontSize: '0.8rem', color: 'var(--grey-medium)' }}>{k.namaPanggilan}</div>
+                          )}
+                        </div>
+                      </td>
                       <td>{k.jabatan}</td>
                       <td>{k.divisi}</td>
-                      <td>{k.levelUser}</td>
+                      <td>{k.brand}</td>
                       <td>
                         <button
                           type="button"
