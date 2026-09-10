@@ -11,9 +11,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // settings: app butuh READ untuk verifikasi Kode Akses (HRD/HOD) & login Superadmin.
-    // WRITE hanya dibuka untuk dokumen aksesHrd & aksesHod — itu yang diubah lewat menu
+    // settings: app butuh READ untuk verifikasi Kode Akses HRD & login Superadmin.
+    // WRITE hanya dibuka untuk dokumen aksesHrd — itu yang diubah lewat menu
     // "Ganti Kode Akses" di Welcome Page (setelah login Superadmin/Google di sisi client).
+    // Kode Akses Portal HOD sekarang pribadi per akun (field kodeAkses di koleksi akunPortal
+    // di bawah), bukan lagi disimpan di settings/aksesHod.
     // Dokumen "superadmin" (username/password) tetap read-only dari client — kalau mau
     // diganti dari default (Superadmin / Admin123), isi manual lewat tab "Data" di Firebase
     // Console.
@@ -23,15 +25,16 @@ service cloud.firestore {
       // lewat halaman "Profil Perusahaan" dan dibaca publik di semua halaman Rapor Online.
       // whitelistSuperadmin: daftar email yang boleh login Google sebagai Superadmin, diatur
       // Superadmin sendiri lewat halaman "Ganti Kode Akses".
-      allow write: if docId == 'aksesHrd' || docId == 'aksesHod' || docId == 'companyInfo' || docId == 'whitelistSuperadmin';
+      allow write: if docId == 'aksesHrd' || docId == 'companyInfo' || docId == 'whitelistSuperadmin';
     }
 
     // akunPortal: pendaftaran Username + Email HRD/HOD (login via Username/Password ATAU Google)
-    // oleh Superadmin lewat Welcome Page. Password akun TIDAK disimpan di sini — hanya di
-    // Firebase Authentication (lihat daftarkanAkunPortal di src/shared/lib/firestore.ts). Sama
-    // seperti karyawan/penilaianKpi, proteksi baca/tulis dokumen ini berjalan di sisi client
-    // (belum ada Firebase Auth custom claims) — dicatat sebagai catatan keamanan yang sama
-    // dengan bagian lain.
+    // oleh Superadmin lewat Welcome Page — TERMASUK field kodeAkses (PIN pribadi Portal HOD per
+    // akun, dikelola lewat menu "Kelola Kode Akses HOD"). Password akun TIDAK disimpan di sini —
+    // hanya di Firebase Authentication (lihat daftarkanAkunPortal di
+    // src/shared/lib/firestore.ts). Sama seperti karyawan/penilaianKpi, proteksi baca/tulis
+    // dokumen ini berjalan di sisi client (belum ada Firebase Auth custom claims) — dicatat
+    // sebagai catatan keamanan yang sama dengan bagian lain.
     match /akunPortal/{docId} {
       allow read, write: if true;
     }

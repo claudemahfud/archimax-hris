@@ -1,11 +1,13 @@
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../router/routePaths';
 import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useToast } from '../../../shared/hooks/useToast';
-import { getKodeAksesHod } from '../../../shared/lib/firestore';
+import { cariAkunPortalHodByDivisiDanKode } from '../../../shared/lib/firestore';
 import { DAFTAR_DIVISI } from '../../../shared/constants/kpi';
 import { Spinner } from '../../../shared/components/Loading';
+
+const WA_RESET_KODE_AKSES = '6282234651413';
 
 export default function Akses() {
   const navigate = useNavigate();
@@ -15,6 +17,13 @@ export default function Akses() {
   const [kode, setKode] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Link WhatsApp "Lupa Kode Akses" — pesan template ikut menyesuaikan Divisi yang sedang
+  // dipilih di dropdown, supaya Admin langsung tahu Divisi mana yang perlu direset.
+  const linkLupaKodeAkses = useMemo(() => {
+    const pesan = `Pengajuan Reset Kode Akses HOD ${divisi}`;
+    return `https://wa.me/${WA_RESET_KODE_AKSES}?text=${encodeURIComponent(pesan)}`;
+  }, [divisi]);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -22,8 +31,10 @@ export default function Akses() {
       // Superadmin = akses 100% ke semua divisi, tidak perlu Kode Akses — tinggal pilih divisi.
       let ok = isSuperadmin;
       if (!ok) {
-        const kodeAsli = await getKodeAksesHod(divisi);
-        ok = kodeAsli.length > 0 && kode.trim() === kodeAsli;
+        // Kode Akses sekarang milik PRIBADI setiap akun HOD (bukan kode bersama per divisi lagi).
+        // Dicocokkan ke seluruh akun HOD terdaftar pada divisi yang dipilih.
+        const akun = await cariAkunPortalHodByDivisiDanKode(divisi, kode);
+        ok = akun !== null;
       }
       if (ok) {
         sessionStorage.setItem('akses_hod', '1');
@@ -31,7 +42,7 @@ export default function Akses() {
         showToast('success', `Selamat datang, Portal HOD ${divisi}.`);
         navigate(ROUTES.HOD_MONITORING);
       } else {
-        showToast('error', 'Kode akses salah atau belum diatur untuk divisi ini.');
+        showToast('error', 'Kode akses salah atau belum diatur untuk akun ini.');
       }
     } catch (err) {
       showToast('error', `Gagal memverifikasi: ${err instanceof Error ? err.message : String(err)}`);
@@ -47,7 +58,7 @@ export default function Akses() {
         <p>
           {isSuperadmin
             ? 'Superadmin — pilih Divisi yang ingin dikelola.'
-            : 'PT Archimax Architect Indonesia — pilih Divisi dan masukkan Kode Akses.'}
+            : 'PT Archimax Architect Indonesia — pilih Divisi dan masukkan Kode Akses pribadi Anda.'}
         </p>
         <div className="form-field">
           <label htmlFor="divisiSelect">Divisi</label>
@@ -71,6 +82,14 @@ export default function Akses() {
         <button type="submit" className="btn" disabled={loading} style={{ width: '100%' }}>
           {loading ? <Spinner label="Memverifikasi..." /> : 'Masuk'}
         </button>
+        {!isSuperadmin && (
+          <p style={{ marginTop: 14, textAlign: 'center', fontSize: '0.88rem' }}>
+            Lupa Kode Akses?{' '}
+            <a href={linkLupaKodeAkses} target="_blank" rel="noopener noreferrer">
+              Ajukan reset lewat WhatsApp Admin
+            </a>
+          </p>
+        )}
       </form>
     </div>
   );

@@ -14,6 +14,7 @@ export const routes = [
   { path: ROUTES.HOD_MONITORING, component: lazy(() => import('../pages/hod/monitoring')) },
   { path: ROUTES.HOD_PENILAIAN, component: lazy(() => import('../pages/hod/penilaian')) },
   { path: ROUTES.GANTI_KODE_AKSES, component: lazy(() => import('../pages/settings/ganti-kode-akses')) },
+  { path: ROUTES.KELOLA_KODE_AKSES_HOD, component: lazy(() => import('../pages/settings/kelola-kode-akses-hod')) },
   { path: ROUTES.RESET_PASSWORD, component: lazy(() => import('../pages/reset-password')) },
   { path: ROUTES.PROFIL, component: lazy(() => import('../pages/profil')) },
   { path: ROUTES.RAPOR, component: lazy(() => import('../pages/rapor')) },

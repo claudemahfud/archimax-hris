@@ -8,6 +8,7 @@ import { auth, googleProvider } from '../../shared/lib/firebase';
 import {
   getWhitelistSuperadmin, cariAkunPortalByEmail, daftarkanAkunPortal, hapusAkunPortal, listAkunPortal,
   loginAkunPortal, kirimMagicLinkResetPassword, ubahUsernameAkunPortal, resetEmailPasswordAkunPortal,
+  kodeAksesHodDefault,
 } from '../../shared/lib/firestore';
 import { simpanSesiAkun } from '../../shared/lib/akunSession';
 import type { AkunPortal } from '../../shared/types';
@@ -205,7 +206,12 @@ export default function Landing() {
         divisi: daftarMode === 'hod' ? divisiAkunBaru : undefined,
       });
       setDaftarAkun(await listAkunPortal());
-      showToast('success', `Akun ${daftarMode === 'hrd' ? 'HRD' : 'HOD'} "${usernameBersih}" (${emailBersih}) berhasil didaftarkan.`);
+      showToast(
+        'success',
+        daftarMode === 'hrd'
+          ? `Akun HRD "${usernameBersih}" (${emailBersih}) berhasil didaftarkan.`
+          : `Akun HOD "${usernameBersih}" (${emailBersih}) berhasil didaftarkan. Kode Akses awal: ${kodeAksesHodDefault()} — bisa diganti lewat menu Kelola Kode Akses HOD.`,
+      );
       setUsernameAkunBaru('');
       setEmailAkunBaru('');
       setPasswordAkunBaru('');
@@ -308,6 +314,7 @@ export default function Landing() {
               <Link to={ROUTES.HRD_DASHBOARD} className="btn">Master File HRD</Link>
               <Link to={ROUTES.HOD_AKSES} className="btn btn-secondary">Portal HOD</Link>
               <Link to={ROUTES.GANTI_KODE_AKSES} className="btn btn-secondary">Ganti Kode Akses</Link>
+              <Link to={ROUTES.KELOLA_KODE_AKSES_HOD} className="btn btn-secondary">Kelola Kode Akses HOD</Link>
               <Link to={ROUTES.PROFIL} className="btn btn-secondary">Profil Saya</Link>
             </div>
 
@@ -418,6 +425,9 @@ export default function Landing() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
                         <span>
                           <strong>{akun.role}</strong>{akun.divisi ? ` · ${akun.divisi}` : ''} — {akun.username} ({akun.email})
+                          {akun.role === 'HOD' && (
+                            <> · Kode Akses: <strong>{akun.kodeAkses || kodeAksesHodDefault()}</strong></>
+                          )}
                         </span>
                         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                           <button

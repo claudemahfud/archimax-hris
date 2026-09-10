@@ -14,10 +14,13 @@ src/
 │   │   ├── dashboard/     → /hrd/dashboard      (Homepage & Grafik)
 │   │   ├── karyawan/      → /hrd/karyawan       (Kelola Data Karyawan)
 │   │   └── penilaian/     → /hrd/penilaian      (Form Penilaian khusus Level User HOD)
-│   └── hod/                ROUTING TERPISAH: PORTAL HOD
-│       ├── akses/         → /hod/akses          (pilih Divisi + PIN)
-│       ├── monitoring/    → /hod/monitoring     (Monitoring & Rekap Staff divisi)
-│       └── penilaian/     → /hod/penilaian      (Form Penilaian KPI Staff)
+│   ├── hod/                 ROUTING TERPISAH: PORTAL HOD
+│   │   ├── akses/         → /hod/akses          (pilih Divisi + Kode Akses pribadi akun HOD)
+│   │   ├── monitoring/    → /hod/monitoring     (Monitoring & Rekap Staff divisi)
+│   │   └── penilaian/     → /hod/penilaian      (Form Penilaian KPI Staff)
+│   └── settings/
+│       ├── ganti-kode-akses/       → /ganti-kode-akses          (Kode Akses Master File HRD)
+│       └── kelola-kode-akses-hod/  → /kelola-kode-akses-hod     (Kode Akses pribadi tiap akun HOD)
 ├── shared/                 dipakai ≥2 halaman (Rule of Two): firebase, komponen, hooks, constants
 ├── router/routes.ts        satu-satunya sumber routing (App.tsx menyatukan semua di sini)
 └── App.tsx / main.tsx
@@ -40,20 +43,31 @@ src/
 - `penilaianKpi/{id}` — riwayat penilaian KPI mingguan per karyawan
 - `settings/aksesHrd` — `{ kodeAkses: string }` PIN Master File HRD (default sebelum diatur:
   **`120200MFD`**, lihat `KODE_AKSES_HRD_DEFAULT` di `src/shared/lib/firestore.ts`)
-- `settings/aksesHod` — `{ [namaDivisi]: kodeAkses }` PIN per Divisi Portal HOD (belum ada
-  default, isi manual dulu di Firebase Console sebelum dipakai untuk divisi terkait)
-- `settings/superadmin` — `{ username, password }` login untuk menu **Ganti Kode Akses**
-  (default sebelum diatur: `Superadmin` / `Admin123`, lihat `SUPERADMIN_DEFAULT` di file yang
-  sama). Dokumen ini read-only dari client — untuk mengganti dari default, isi manual di
-  Firebase Console.
+- `settings/superadmin` — `{ username, password }` login untuk menu **Ganti Kode Akses** &
+  **Kelola Kode Akses HOD** (default sebelum diatur: `Superadmin` / `Admin123`, lihat
+  `SUPERADMIN_DEFAULT` di file yang sama). Dokumen ini read-only dari client — untuk mengganti
+  dari default, isi manual di Firebase Console.
+- `akunPortal/{id}.kodeAkses` — PIN **pribadi** Portal HOD, satu per akun HOD (bukan lagi kode
+  bersama per divisi). Diisi otomatis `000000` saat akun HOD baru didaftarkan Superadmin (lihat
+  `KODE_AKSES_HOD_DEFAULT` di `src/shared/lib/firestore.ts`); akun HOD lama yang field ini masih
+  kosong juga otomatis dianggap `000000` sampai diganti — tidak perlu migrasi data manual.
 
 ### Menu "Ganti Kode Akses" (`/ganti-kode-akses`, tombol di Welcome Page)
 
 Halaman ini butuh login Superadmin dulu (username/password default di atas, atau **Login
 dengan Akun Google** via Firebase Auth — akun Google mana pun yang berhasil login dianggap
-Superadmin, belum ada whitelist email). Setelah login, Kode Akses Master File HRD atau Portal
-HOD per divisi bisa diganti langsung dari app (tersimpan ke `settings/aksesHrd` /
-`settings/aksesHod`) tanpa perlu buka Firebase Console lagi.
+Superadmin, belum ada whitelist email). Setelah login, Kode Akses Master File HRD bisa diganti
+langsung dari app (tersimpan ke `settings/aksesHrd`) tanpa perlu buka Firebase Console lagi.
+
+### Menu "Kelola Kode Akses HOD" (`/kelola-kode-akses-hod`, tombol di Welcome Page)
+
+Juga butuh login Superadmin. Menampilkan seluruh akun HOD terdaftar dikelompokkan per Divisi,
+lengkap Kode Akses pribadi masing-masing — bisa diganti atau direset ke `000000` satu per satu.
+Login Portal HOD (`/hod/akses`) tetap memilih Divisi dari dropdown lebih dulu, lalu Kode Akses
+yang diketik dicocokkan ke seluruh akun HOD pada Divisi itu (satu Divisi boleh punya lebih dari
+satu akun HOD, masing-masing kodenya berbeda). Ada juga link "Lupa Kode Akses" yang membuka
+WhatsApp Admin (`wa.me/6282234651413`) dengan pesan template `Pengajuan Reset Kode Akses HOD
+{Nama Divisi}` otomatis terisi sesuai Divisi yang sedang dipilih.
 
 > Firebase Auth: kalau login Google gagal dengan error `auth/operation-not-allowed` atau
 > `auth/unauthorized-domain`, aktifkan provider **Google** di Firebase Console → Authentication

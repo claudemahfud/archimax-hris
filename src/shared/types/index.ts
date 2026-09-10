@@ -79,7 +79,11 @@ export interface AkunPortal {
   username: string; // disimpan lowercase & trim, unik per akun
   email: string; // disimpan lowercase & trim, unik per akun (dipakai sebagai identitas Firebase Auth)
   role: 'HRD' | 'HOD';
-  divisi?: string; // wajib diisi kalau role === 'HOD' (1 akun = 1 divisi, sama seperti Kode Akses HOD)
+  divisi?: string; // wajib diisi kalau role === 'HOD' — satu divisi boleh punya lebih dari satu akun HOD
+  // Kode Akses (PIN) pribadi untuk gerbang Portal HOD (/hod/akses) — HANYA dipakai kalau
+  // role === 'HOD'. Setiap akun HOD punya kodenya sendiri (tidak lagi kode bersama per divisi).
+  // Default sebelum diganti Superadmin: '000000' (lihat KODE_AKSES_HOD_DEFAULT di firestore.ts).
+  kodeAkses?: string;
   createdAt: number;
 }
 

@@ -132,7 +132,7 @@ export async function listRiwayatKpi(karyawanId: string): Promise<PenilaianKpi[]
 }
 
 // ============================================================
-// SECTION: Kode Akses (Gate PIN — HRD & per-divisi HOD)
+// SECTION: Kode Akses (Gate PIN — HRD)
 // ============================================================
 const SETTINGS_COL = 'settings';
 
@@ -148,16 +148,6 @@ export async function getKodeAksesHrd(): Promise<string> {
 
 export async function setKodeAksesHrd(kode: string): Promise<void> {
   await setDoc(doc(db, SETTINGS_COL, 'aksesHrd'), { kodeAkses: kode }, { merge: true });
-}
-
-export async function getKodeAksesHod(divisi: string): Promise<string> {
-  const snap = await getDoc(doc(db, SETTINGS_COL, 'aksesHod'));
-  const data = snap.exists() ? (snap.data() as Record<string, string>) : {};
-  return data[divisi] || '';
-}
-
-export async function setKodeAksesHod(divisi: string, kode: string): Promise<void> {
-  await setDoc(doc(db, SETTINGS_COL, 'aksesHod'), { [divisi]: kode }, { merge: true });
 }
 
 // ============================================================
@@ -224,9 +214,45 @@ export async function hapusWhitelistSuperadmin(email: string): Promise<void> {
 // Password TIDAK PERNAH disimpan di Firestore — hanya ada di Firebase Auth.
 const AKUN_PORTAL_COL = 'akunPortal';
 
+// Kode Akses (PIN) default untuk akun HOD yang belum diganti Superadmin — dipakai saat akun
+// baru didaftarkan (lihat daftarkanAkunPortal) MAUPUN sebagai fallback untuk akun HOD lama
+// (didaftarkan sebelum fitur Kode Akses per-akun ini ada) yang field `kodeAkses`-nya masih
+// kosong di Firestore. Efeknya: semua akun HOD lama otomatis dianggap ber-Kode Akses '000000'
+// sampai Superadmin menggantinya lewat menu "Kelola Kode Akses" — tanpa perlu migrasi data.
+const KODE_AKSES_HOD_DEFAULT = '000000';
+
+export function kodeAksesHodDefault(): string {
+  return KODE_AKSES_HOD_DEFAULT;
+}
+
 export async function listAkunPortal(): Promise<AkunPortal[]> {
   const snap = await getDocs(query(collection(db, AKUN_PORTAL_COL), orderBy('createdAt', 'desc')));
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AkunPortal, 'id'>) }));
+}
+
+/** Semua akun HOD (opsional difilter per Divisi), dipakai halaman Portal HOD & Kelola Kode Akses. */
+export async function listAkunPortalHod(divisi?: string): Promise<AkunPortal[]> {
+  const semua = await listAkunPortal();
+  return semua.filter((a) => a.role === 'HOD' && (!divisi || a.divisi === divisi));
+}
+
+/**
+ * Cocokkan Divisi + Kode Akses pribadi yang diketik di gerbang Portal HOD (/hod/akses) ke salah
+ * satu akun HOD terdaftar pada divisi itu. Satu divisi boleh punya beberapa akun HOD dengan
+ * Kode Akses masing-masing berbeda — dicek satu per satu sampai ketemu yang cocok.
+ */
+export async function cariAkunPortalHodByDivisiDanKode(divisi: string, kode: string): Promise<AkunPortal | null> {
+  const kodeBersih = kode.trim();
+  if (!kodeBersih) return null;
+  const akunDivisi = await listAkunPortalHod(divisi);
+  return akunDivisi.find((a) => (a.kodeAkses || KODE_AKSES_HOD_DEFAULT) === kodeBersih) || null;
+}
+
+/** Ganti Kode Akses pribadi satu akun HOD — dipakai Superadmin lewat menu "Kelola Kode Akses". */
+export async function setKodeAksesAkunPortal(id: string, kode: string): Promise<void> {
+  const bersih = kode.trim();
+  if (bersih.length < 4) throw new Error('Kode Akses minimal 4 karakter.');
+  await updateDoc(doc(db, AKUN_PORTAL_COL, id), { kodeAkses: bersih });
 }
 
 export async function cariAkunPortalByEmail(email: string): Promise<AkunPortal | null> {
@@ -277,7 +303,10 @@ export async function daftarkanAkunPortal(data: {
     username: usernameBersih,
     email: emailBersih,
     role: data.role,
-    ...(data.role === 'HOD' ? { divisi: data.divisi } : {}),
+    // Setiap akun HOD baru langsung dibekali Kode Akses (PIN) pribadinya sendiri, dimulai dari
+    // nilai default — beda dengan akun HOD lain walau divisinya sama. Superadmin bisa
+    // menggantinya kapan saja lewat menu "Kelola Kode Akses".
+    ...(data.role === 'HOD' ? { divisi: data.divisi, kodeAkses: KODE_AKSES_HOD_DEFAULT } : {}),
     createdAt: Date.now(),
   });
   return ref.id;
