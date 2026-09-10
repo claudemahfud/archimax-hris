@@ -333,14 +333,22 @@ table.data-table tbody tr:nth-child(even) { background: rgba(247, 245, 242, 0.6)
   box-shadow: var(--shadow-card-hover);
 }
 
-/* ==== Export PDF A4 (Rapor Online) ==== */
-.cetak-header { display: none; }
+/* ==== Unduh Rapor Online (PDF/PNG offline via html2canvas, bukan window.print()) ==== */
+/* Header "KOP SURAT": logo + identitas perusahaan lengkap di kiri-kanan, digaris bawahi garis
+   tebal+tipis ala kop surat resmi, lalu judul dokumen di bawahnya. Hanya dirender ke DOM saat
+   proses unduh berlangsung (lihat modeCetak di RaporKaryawan.tsx). */
+.cetak-header { display: flex; align-items: center; gap: 16px; padding-bottom: 10px; }
+.cetak-header-logo { height: 56px; width: auto; object-fit: contain; }
+.cetak-header-company h1 { margin: 0; font-size: 1.15rem; letter-spacing: 0.02em; }
+.cetak-header-company p { margin: 2px 0 0; font-size: 0.82rem; color: var(--grey-medium); }
+.cetak-divider { height: 4px; background: var(--gradient-brand); margin-bottom: 3px; border-radius: 2px; }
+.cetak-doc-title { padding: 10px 0 16px; }
+.cetak-doc-title h2 { margin: 0; font-size: 1rem; }
+.cetak-doc-title p { margin: 2px 0 0; font-size: 0.85rem; color: var(--grey-medium); }
+/* Fallback kalau user tetap pakai Ctrl+P / print bawaan browser (bukan tombol Unduh PDF/PNG). */
 @media print {
   @page { size: A4; margin: 14mm; }
   .no-print { display: none !important; }
-  .cetak-header {
-    display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
-  }
   .page { padding: 0; }
   .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; page-break-inside: avoid; margin-bottom: 14px; }
   body { background: #fff; }

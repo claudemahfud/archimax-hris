@@ -7,9 +7,11 @@ import {
 import { Line, Radar, Bar } from 'react-chartjs-2';
 import { LOGO_ARCHIMAX_URL } from '../../shared/constants/branding';
 import { Spinner } from '../../shared/components/Loading';
+import { useToast } from '../../shared/hooks/useToast';
 import { getKaryawanUntukRapor, listRiwayatKpi, getCompanyInfo, kodeAksesRaporDefault } from '../../shared/lib/firestore';
 import { ROUTES } from '../../router/routePaths';
 import { getAspekHardSkill, POIN_PENGURANG } from '../../shared/constants/kpi';
+import { formatTanggalTampilan } from '../../shared/lib/tanggal';
 import type { Karyawan, PenilaianKpi, CompanyInfo } from '../../shared/types';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, RadialLinearScale, Tooltip, Legend);
@@ -52,19 +54,77 @@ export default function RaporKaryawan() {
   const [pinInput, setPinInput] = useState('');
   const [errorPin, setErrorPin] = useState('');
   const [tab, setTab] = useState<Tab>('profil');
-  // Mode cetak: saat true, semua tab ditampilkan sekaligus (bukan cuma tab aktif) supaya
-  // Export PDF A4 menghasilkan satu dokumen lengkap, bukan cuma tab yang sedang dibuka.
+  // Mode cetak: saat true, semua tab + header KOP SURAT ditampilkan sekaligus (bukan cuma tab
+  // aktif) supaya hasil unduhan jadi satu dokumen lengkap. HANYA dipakai untuk proses
+  // screenshot (html2canvas) di bawah — TIDAK memanggil window.print(), jadi tidak ada menu
+  // Cetak browser yang terbuka; hasilnya langsung terunduh sebagai file PDF/PNG offline.
   const [modeCetak, setModeCetak] = useState(false);
+  const [mengekspor, setMengekspor] = useState<null | 'pdf' | 'png'>(null);
+  const cetakRef = useRef<HTMLDivElement | null>(null);
+  const { showToast } = useToast();
 
-  useEffect(() => {
-    function selesaiCetak() { setModeCetak(false); }
-    window.addEventListener('afterprint', selesaiCetak);
-    return () => window.removeEventListener('afterprint', selesaiCetak);
-  }, []);
+  // Nama file aman (tanpa karakter spesial) supaya kompatibel di semua OS.
+  function namaFileAman(s: string): string {
+    return s
+      .normalize('NFKD')
+      .replace(/[^\w\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-');
+  }
 
-  function exportPdf() {
+  async function unduhRapor(format: 'pdf' | 'png') {
+    if (!karyawan || mengekspor) return;
     setModeCetak(true);
-    requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
+    setMengekspor(format);
+    try {
+      // Tunggu render selesai (semua tab + header kop surat sudah tampil di DOM) sebelum
+      // diambil screenshot-nya, supaya tidak ada konten yang kepotong/belum sempat render.
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const el = cetakRef.current;
+      if (!el) throw new Error('Konten Rapor belum siap, coba lagi.');
+
+      const { default: html2canvas } = await import('html2canvas');
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+
+      const terurutUntukNama = [...riwayat].sort((a, b) => a.timestamp - b.timestamp);
+      const terakhirUntukNama = terurutUntukNama[terurutUntukNama.length - 1];
+      const labelPeriode = terakhirUntukNama?.periodeMinggu
+        || formatTanggalTampilan(new Date().toISOString().slice(0, 10)).replace(/\//g, '-');
+      const namaFile = `Rapor-${namaFileAman(karyawan.namaLengkap)}-${namaFileAman(labelPeriode)}`;
+
+      if (format === 'png') {
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = `${namaFile}.png`;
+        a.click();
+      } else {
+        const { jsPDF } = await import('jspdf');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pageWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+        let heightLeft = imgHeight;
+        let posisi = 0;
+        pdf.addImage(imgData, 'JPEG', 0, posisi, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        while (heightLeft > 0) {
+          posisi -= pageHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', 0, posisi, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+        pdf.save(`${namaFile}.pdf`);
+      }
+      showToast('success', `Rapor ${karyawan.namaLengkap} berhasil diunduh (${format.toUpperCase()}).`);
+    } catch (err) {
+      showToast('error', `Gagal mengunduh Rapor: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setMengekspor(null);
+      setModeCetak(false);
+    }
   }
 
   // Gesture geser (swipe) untuk pindah tab di layar sentuh — geser cukup jauh secara
@@ -186,13 +246,6 @@ export default function RaporKaryawan() {
         </Link>
         <span className="nav-brand">Rapor Online — {karyawan.namaLengkap}</span>
       </nav>
-      <div className="cetak-header">
-        <img src={LOGO_ARCHIMAX_URL} alt="Logo perusahaan" style={{ height: 44 }} />
-        <div>
-          <h1 style={{ margin: 0 }}>Rapor Online — {karyawan.namaLengkap}</h1>
-          <p style={{ margin: 0 }}>{karyawan.jabatan} · {karyawan.divisi} · NIP {karyawan.nip}</p>
-        </div>
-      </div>
       <div className="page">
         <div className="table-scroll no-print" style={{ marginBottom: 16 }}>
           <div className="toolbar-wrap">
@@ -207,8 +260,21 @@ export default function RaporKaryawan() {
                 {t.label}
               </button>
             ))}
-            <button type="button" className="btn btn-secondary toolbar-action" onClick={exportPdf}>
-              Download / Export PDF A4
+            <button
+              type="button"
+              className="btn btn-secondary toolbar-action"
+              onClick={() => unduhRapor('pdf')}
+              disabled={mengekspor !== null}
+            >
+              {mengekspor === 'pdf' ? 'Menyiapkan PDF...' : 'Unduh PDF'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => unduhRapor('png')}
+              disabled={mengekspor !== null}
+            >
+              {mengekspor === 'png' ? 'Menyiapkan PNG...' : 'Unduh PNG'}
             </button>
           </div>
         </div>
@@ -217,6 +283,26 @@ export default function RaporKaryawan() {
           {TABS.map((t) => <span key={t.key} className={`swipe-dot${tab === t.key ? ' active' : ''}`} />)}
         </div>
 
+        <div ref={cetakRef}>
+        {modeCetak && (
+          <>
+            {/* Header gaya KOP SURAT — cuma dirender saat proses unduh (screenshot), berisi
+                identitas perusahaan lengkap seperti kop surat resmi, bukan cuma logo & judul. */}
+            <div className="cetak-header">
+              <img src={LOGO_ARCHIMAX_URL} alt="Logo perusahaan" className="cetak-header-logo" />
+              <div className="cetak-header-company">
+                <h1>{companyInfo?.namaPerusahaan || 'HRIS Archimax'}</h1>
+                {companyInfo?.alamat && <p>{companyInfo.alamat}</p>}
+                {companyInfo?.kontak && <p>{companyInfo.kontak}</p>}
+              </div>
+            </div>
+            <div className="cetak-divider" />
+            <div className="cetak-doc-title">
+              <h2>Rapor Online — {karyawan.namaLengkap}</h2>
+              <p>{karyawan.jabatan} · {karyawan.divisi} · NIP {karyawan.nip}</p>
+            </div>
+          </>
+        )}
         <div className="swipe-area" onTouchStart={handleSentuhMulai} onTouchEnd={handleSentuhSelesai}>
         {(tab === 'profil' || modeCetak) && (
           <div className="card">
@@ -226,7 +312,7 @@ export default function RaporKaryawan() {
               <Info label="Jabatan" value={karyawan.jabatan} />
               <Info label="Divisi" value={karyawan.divisi} />
               <Info label="Status Karyawan" value={karyawan.statusKaryawan} />
-              <Info label="Bergabung Sejak" value={String(karyawan.bergabungSejak)} />
+              <Info label="Bergabung Sejak" value={formatTanggalTampilan(karyawan.bergabungSejak)} />
               <Info label="Pengalaman Kerja" value={karyawan.pengalamanKerja} />
               <Info label="Pendidikan Terakhir" value={karyawan.pendidikanTerakhir} />
               <Info label="No HP" value={karyawan.noHp} />
@@ -363,6 +449,7 @@ export default function RaporKaryawan() {
             <p className="content-text">{companyInfo?.visiMisi || 'Belum diisi HRD.'}</p>
           </div>
         )}
+        </div>
         </div>
       </div>
     </div>

@@ -31,7 +31,7 @@ const FORM_KOSONG: FormState = {
   nik: '', tempatLahir: '', tanggalLahir: '', jenisKelamin: '', alamatKtp: '', alamatDomisili: '',
   agama: '', statusPerkawinan: '', kewarganegaraan: 'Indonesia', noHp: '', kontakDarurat: '',
   email: '', jumlahIstri: 0, jumlahAnak: 0, pendidikanTerakhir: '', levelUser: 'Staff',
-  fotoUrl: '', kodeAksesRapor: '',
+  fotoUrl: '', kodeAksesRapor: '', catatan: '',
 };
 
 // ============================================================
@@ -324,6 +324,15 @@ export default function Karyawan() {
               onChange={(v) => updateField('kodeAksesRapor', v)}
               span={6}
             />
+            <div className="form-field span-12">
+              <label htmlFor="catatan">Catatan (data yang belum lengkap / keterangan manual)</label>
+              <textarea
+                id="catatan"
+                value={form.catatan || ''}
+                onChange={(e) => updateField('catatan', e.target.value)}
+                placeholder="mis. NIK & KTP menyusul, nomor rekening belum ada, dsb."
+              />
+            </div>
           </div>
 
           {/* SECTION: Kompensasi */}
@@ -388,7 +397,7 @@ export default function Karyawan() {
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
-                  <tr><th>Foto</th><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Brand</th><th>Rapor Online</th><th>Aksi</th></tr>
+                  <tr><th>Foto</th><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Brand</th><th>Catatan</th><th>Aksi</th></tr>
                 </thead>
                 <tbody>
                   {daftar.map((k) => (
@@ -420,9 +429,11 @@ export default function Karyawan() {
                       <td>{k.jabatan}</td>
                       <td>{k.divisi}</td>
                       <td>{k.brand || '-'}</td>
-                      <td>
+                      <td style={{ maxWidth: 220, whiteSpace: 'normal', fontSize: '0.85rem', color: 'var(--grey-medium)' }}>
+                        {k.catatan || '-'}
+                      </td>
+                      <td className="table-actions">
                         <button
-                          type="button"
                           className="btn btn-secondary"
                           onClick={async () => {
                             const url = `${window.location.origin}${ROUTES.raporUrl(k.id)}`;
@@ -433,8 +444,6 @@ export default function Karyawan() {
                         >
                           Salin Link
                         </button>
-                      </td>
-                      <td className="table-actions">
                         <button className="btn btn-secondary" onClick={() => mulaiEdit(k)}>Edit</button>
                         <button
                           className="btn btn-secondary"

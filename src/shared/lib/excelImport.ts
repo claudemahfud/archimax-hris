@@ -35,7 +35,7 @@ function formatTanggal(v: unknown): string {
   if (v instanceof Date) {
     const dd = String(v.getDate()).padStart(2, '0');
     const mm = String(v.getMonth() + 1).padStart(2, '0');
-    return `${dd}-${mm}-${v.getFullYear()}`;
+    return `${dd}/${mm}/${v.getFullYear()}`;
   }
   if (v === null || v === undefined || v === '') return '';
   return String(v).trim();

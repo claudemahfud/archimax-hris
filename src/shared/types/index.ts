@@ -11,7 +11,7 @@ export interface Karyawan {
   bergabungSejak: string;
   pengalamanKerja: string;
   statusKaryawan: string;
-  masaKontrak: string; // tanggal, format dd-MM-yyyy
+  masaKontrak: string; // tanggal, format dd/MM/yyyy
   gajiPokok: number;
   tunjanganKehadiran: number;
   tunjanganKompetensi: number;
@@ -39,6 +39,9 @@ export interface Karyawan {
   // Kode akses (PIN) untuk buka link Rapor Online pribadi karyawan (/rapor/:id).
   // Default kalau kosong: 6 digit terakhir NIK (lihat kodeAksesRaporDefault di firestore.ts).
   kodeAksesRapor?: string;
+  // Catatan bebas dari HRD — data yang belum lengkap saat karyawan ditambahkan (mis. "NIK
+  // menyusul", "belum ada foto") atau keterangan lain, diisi manual (bukan otomatis sistem).
+  catatan?: string;
   createdAt?: number;
   updatedAt?: number;
 }
