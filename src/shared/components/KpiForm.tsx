@@ -114,20 +114,21 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
     <form className="card" onSubmit={handleSubmit}>
       <h2 className="kpi-section-title"><IconUserCircle /> Form Penilaian KPI</h2>
 
-      <div className="form-grid">
-        <div className="form-field">
+      <div className="form-grid kpi-grid">
+        <div className="form-field span-6">
           <label htmlFor="kpiKaryawan">Karyawan</label>
           <select id="kpiKaryawan" value={karyawanId} onChange={(e) => setKaryawanId(e.target.value)} required>
             <option value="">-- Pilih Karyawan --</option>
             {targets.map((k) => <option key={k.id} value={k.id}>{k.namaLengkap} ({k.divisi})</option>)}
           </select>
         </div>
-        <div className="form-field">
+        <div className="form-field span-6">
           <label htmlFor="periodeMinggu">Periode Minggu</label>
           <input id="periodeMinggu" type="text" placeholder="mis. Minggu 2 - Sep 2026" value={periodeMinggu}
-            onChange={(e) => setPeriodeMinggu(e.target.value)} required />
+            onChange={(e) => setPeriodeMinggu(e.target.value)} required
+            aria-describedby={target && periodeMinggu.trim() && periodeTerpakai.has(periodeMinggu.trim().toLowerCase()) ? 'periodeMingguWarning' : undefined} />
           {target && periodeMinggu.trim() && periodeTerpakai.has(periodeMinggu.trim().toLowerCase()) && (
-            <span className="kpi-summary-chip kpi-summary-red" style={{ alignSelf: 'flex-start' }}>
+            <span id="periodeMingguWarning" role="alert" className="kpi-summary-chip kpi-summary-red" style={{ alignSelf: 'flex-start' }}>
               Periode ini sudah pernah dinilai
             </span>
           )}
@@ -149,14 +150,14 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
       {target && (
         <>
           <div className="kpi-section-head">
-            <h3 className="kpi-section-title"><IconTrophy /> Penilaian Hard Skill (skala 0–100)</h3>
+            <h3 className="kpi-section-title" id="hardSkillHeading"><IconTrophy /> Penilaian Hard Skill (skala 0–100)</h3>
             <span className="kpi-summary-chip kpi-summary-amber">
               <span>Total Skor</span><strong>{totalSkor.toFixed(2)}</strong>
             </span>
           </div>
-          <div className="form-grid">
+          <div className="form-grid kpi-grid" role="group" aria-labelledby="hardSkillHeading">
             {aspekLabel.map((label, i) => (
-              <div className="form-field" key={label + i}>
+              <div className="form-field span-3" key={label + i}>
                 <label htmlFor={`aspek-${i}`}>{label}</label>
                 <input
                   id={`aspek-${i}`} type="number" min={0} max={100} className="skor-aspek"
@@ -171,14 +172,14 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
           </div>
 
           <div className="kpi-section-head">
-            <h3 className="kpi-section-title"><IconClipboardList /> Soft Skills / Kedisiplinan &amp; SOP</h3>
+            <h3 className="kpi-section-title" id="softSkillHeading"><IconClipboardList /> Soft Skills / Kedisiplinan &amp; SOP</h3>
             <span className={`kpi-summary-chip ${skorKedisiplinan >= 80 ? 'kpi-summary-green' : 'kpi-summary-red'}`}>
               <span>Skor Akhir</span><strong>{skorKedisiplinan.toFixed(2)}</strong>
             </span>
           </div>
-          <div className="form-grid">
+          <div className="form-grid kpi-grid" role="group" aria-labelledby="softSkillHeading">
             {SOFT_SKILL_FIELDS.map((f) => (
-              <div className="form-field" key={f.key}>
+              <div className="form-field span-3" key={f.key}>
                 <label htmlFor={`soft-${f.key}`}>{f.label}</label>
                 <input
                   id={`soft-${f.key}`} type="number" min={0} className="soft-input"
@@ -188,15 +189,15 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
                 />
               </div>
             ))}
-          </div>
-          <div className="form-field">
-            <label htmlFor="keteranganCustom">Keterangan Custom Poin</label>
-            <input id="keteranganCustom" type="text" value={catatan.keteranganCustom}
-              onChange={(e) => setCatatan((p) => ({ ...p, keteranganCustom: e.target.value }))} />
+            <div className="form-field span-6">
+              <label htmlFor="keteranganCustom">Keterangan Custom Poin</label>
+              <input id="keteranganCustom" type="text" value={catatan.keteranganCustom}
+                onChange={(e) => setCatatan((p) => ({ ...p, keteranganCustom: e.target.value }))} />
+            </div>
           </div>
 
-          <h3 className="kpi-section-title"><IconUserCircle /> Catatan &amp; Rekomendasi Atasan</h3>
-          <div className="form-grid">
+          <h3 className="kpi-section-title" id="catatanHeading"><IconUserCircle /> Catatan &amp; Rekomendasi Atasan</h3>
+          <div className="form-grid kpi-grid" role="group" aria-labelledby="catatanHeading">
             <TextArea label="Kelebihan" value={catatan.kelebihan} onChange={(v) => setCatatan((p) => ({ ...p, kelebihan: v }))} />
             <TextArea label="Kekurangan" value={catatan.kekurangan} onChange={(v) => setCatatan((p) => ({ ...p, kekurangan: v }))} />
             <TextArea label="Rekomendasi" value={catatan.rekomendasi} onChange={(v) => setCatatan((p) => ({ ...p, rekomendasi: v }))} />
@@ -219,7 +220,7 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
 function Field({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
   const id = `field-${label.toLowerCase().replace(/\s+/g, '-')}`;
   return (
-    <div className="form-field">
+    <div className="form-field span-6">
       <label htmlFor={id}>{label}</label>
       <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
@@ -229,7 +230,7 @@ function Field({ label, value, onChange, type = 'text' }: { label: string; value
 function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   const id = `ta-${label.toLowerCase().replace(/\s+/g, '-')}`;
   return (
-    <div className="form-field">
+    <div className="form-field span-6">
       <label htmlFor={id}>{label}</label>
       <textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
