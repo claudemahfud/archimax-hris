@@ -1,4 +1,4 @@
-export type LevelUser = 'Staff' | 'HOD' | 'EKSEKUTIF';
+export type LevelUser = 'Staff' | 'HOD' | 'EKSEKUTIF' | 'Branch Manager';
 
 export interface Karyawan {
   id: string;
@@ -69,7 +69,7 @@ export interface PenilaianKpiForm {
 export interface PenilaianKpi extends PenilaianKpiForm {
   id: string;
   timestamp: number;
-  dinilaiOleh: 'HRD' | 'HOD';
+  dinilaiOleh: 'HRD' | 'HOD' | 'Branch Manager';
 }
 
 // Akun Portal (HRD/HOD) yang didaftarkan Superadmin lewat Welcome Page. Dipakai untuk dua
@@ -81,10 +81,11 @@ export interface AkunPortal {
   id: string;
   username: string; // disimpan lowercase & trim, unik per akun
   email: string; // disimpan lowercase & trim, unik per akun (dipakai sebagai identitas Firebase Auth)
-  role: 'HRD' | 'HOD';
-  divisi?: string; // wajib diisi kalau role === 'HOD' — satu divisi boleh punya lebih dari satu akun HOD
-  // Kode Akses (PIN) pribadi untuk gerbang Portal HOD (/hod/akses) — HANYA dipakai kalau
-  // role === 'HOD'. Setiap akun HOD punya kodenya sendiri (tidak lagi kode bersama per divisi).
+  role: 'HRD' | 'HOD' | 'Branch Manager';
+  divisi?: string; // wajib diisi kalau role === 'HOD'/'Branch Manager' — satu divisi boleh punya lebih dari satu akun
+  // Kode Akses (PIN) pribadi untuk gerbang Portal HOD (/hod/akses) atau Portal Branch Manager
+  // (/branch-manager/akses) — HANYA dipakai kalau role === 'HOD' atau 'Branch Manager'. Setiap
+  // akun punya kodenya sendiri (tidak lagi kode bersama per divisi).
   // Default sebelum diganti Superadmin: '000000' (lihat KODE_AKSES_HOD_DEFAULT di firestore.ts).
   kodeAkses?: string;
   createdAt: number;

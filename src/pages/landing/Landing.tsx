@@ -15,6 +15,7 @@ import type { AkunPortal } from '../../shared/types';
 import { useAksesSuperadmin } from '../../shared/hooks/useAksesSuperadmin';
 import { useAksesGate } from '../../shared/hooks/useAksesGate';
 import { useAksesHod } from '../../shared/hooks/useAksesHod';
+import { useAksesBranchManager } from '../../shared/hooks/useAksesBranchManager';
 import { useToast } from '../../shared/hooks/useToast';
 import { Spinner } from '../../shared/components/Loading';
 import { PortalNav } from '../../shared/components/PortalNav';
@@ -37,7 +38,7 @@ const FACETS = [
 ] as const;
 
 type Mode = 'hero' | 'login';
-type DaftarMode = 'hrd' | 'hod' | null;
+type DaftarMode = 'hrd' | 'hod' | 'bm' | null;
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ export default function Landing() {
   const { terverifikasi: terverifikasiSuperadmin, loginManual, konfirmasiSuperadmin, keluar: keluarSuperadmin } = useAksesSuperadmin();
   const { terverifikasi: terverifikasiHrd, keluar: keluarHrd } = useAksesGate('akses_hrd');
   const { terverifikasi: terverifikasiHod, divisi: divisiHod, keluar: keluarHod } = useAksesHod();
+  const { terverifikasi: terverifikasiBm, divisi: divisiBm, keluar: keluarBm } = useAksesBranchManager();
 
   const [mode, setMode] = useState<Mode>('hero');
 
@@ -116,6 +118,14 @@ export default function Landing() {
         navigate(ROUTES.HOD_MONITORING);
         return;
       }
+      if (akun?.role === 'Branch Manager' && akun.divisi) {
+        sessionStorage.setItem('akses_branch_manager', '1');
+        sessionStorage.setItem('akses_branch_manager_divisi', akun.divisi);
+        simpanSesiAkun({ username: akun.username, email: akun.email });
+        showToast('success', `Login berhasil. Selamat datang, Branch Manager ${akun.divisi}.`);
+        navigate(ROUTES.BM_MONITORING);
+        return;
+      }
 
       showToast('error', 'Username atau password salah.');
     } catch (err) {
@@ -176,6 +186,14 @@ export default function Landing() {
         navigate(ROUTES.HOD_MONITORING);
         return;
       }
+      if (akun?.role === 'Branch Manager' && akun.divisi) {
+        sessionStorage.setItem('akses_branch_manager', '1');
+        sessionStorage.setItem('akses_branch_manager_divisi', akun.divisi);
+        simpanSesiAkun({ username: akun.username, email: akun.email });
+        showToast('success', `Login dengan Google berhasil. Selamat datang, Branch Manager ${akun.divisi}.`);
+        navigate(ROUTES.BM_MONITORING);
+        return;
+      }
 
       await signOut(auth).catch(() => undefined);
       showToast('error', `Email ${email || 'ini'} belum terdaftar. Hubungi Superadmin untuk didaftarkan.`);
@@ -202,15 +220,15 @@ export default function Landing() {
         username: usernameBersih,
         email: emailBersih,
         password: passwordAkunBaru,
-        role: daftarMode === 'hrd' ? 'HRD' : 'HOD',
-        divisi: daftarMode === 'hod' ? divisiAkunBaru : undefined,
+        role: daftarMode === 'hrd' ? 'HRD' : daftarMode === 'hod' ? 'HOD' : 'Branch Manager',
+        divisi: (daftarMode === 'hod' || daftarMode === 'bm') ? divisiAkunBaru : undefined,
       });
       setDaftarAkun(await listAkunPortal());
       showToast(
         'success',
         daftarMode === 'hrd'
           ? `Akun HRD "${usernameBersih}" (${emailBersih}) berhasil didaftarkan.`
-          : `Akun HOD "${usernameBersih}" (${emailBersih}) berhasil didaftarkan. Kode Akses awal: ${kodeAksesHodDefault()} — bisa diganti lewat menu Kelola Kode Akses HOD.`,
+          : `Akun ${daftarMode === 'hod' ? 'HOD' : 'Branch Manager'} "${usernameBersih}" (${emailBersih}) berhasil didaftarkan. Kode Akses awal: ${kodeAksesHodDefault()} — bisa diganti lewat menu Kelola Kode Akses HOD & Branch Manager.`,
       );
       setUsernameAkunBaru('');
       setEmailAkunBaru('');
@@ -321,8 +339,9 @@ export default function Landing() {
             <div className="dashboard-links">
               <Link to={ROUTES.HRD_DASHBOARD} className="btn">Master File HRD</Link>
               <Link to={ROUTES.HOD_AKSES} className="btn btn-secondary">Portal HOD</Link>
+              <Link to={ROUTES.BM_AKSES} className="btn btn-secondary">Portal Branch Manager</Link>
               <Link to={ROUTES.GANTI_KODE_AKSES} className="btn btn-secondary">Ganti Kode Akses</Link>
-              <Link to={ROUTES.KELOLA_KODE_AKSES_HOD} className="btn btn-secondary">Kelola Kode Akses HOD</Link>
+              <Link to={ROUTES.KELOLA_KODE_AKSES_HOD} className="btn btn-secondary">Kelola Kode Akses HOD &amp; BM</Link>
               <Link to={ROUTES.PROFIL} className="btn btn-secondary">Profil Saya</Link>
             </div>
 
@@ -343,12 +362,19 @@ export default function Landing() {
                 >
                   + Daftarkan Akun HOD
                 </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setDaftarMode(daftarMode === 'bm' ? null : 'bm')}
+                >
+                  + Daftarkan Akun Branch Manager
+                </button>
               </div>
 
               {daftarMode && (
                 <form onSubmit={handleDaftarAkun} style={{ marginBottom: 16 }}>
                   <div className="form-field">
-                    <label htmlFor="usernameAkunBaruInput">Username {daftarMode === 'hrd' ? 'HRD' : 'HOD'}</label>
+                    <label htmlFor="usernameAkunBaruInput">Username {daftarMode === 'hrd' ? 'HRD' : daftarMode === 'hod' ? 'HOD' : 'Branch Manager'}</label>
                     <input
                       id="usernameAkunBaruInput"
                       type="text"
@@ -386,7 +412,7 @@ export default function Landing() {
                     />
                   </div>
                   <div className="form-field">
-                    <label htmlFor="emailAkunBaruInput">Email {daftarMode === 'hrd' ? 'HRD' : 'HOD'} (untuk Login dengan Google &amp; Magic Link Reset Password)</label>
+                    <label htmlFor="emailAkunBaruInput">Email {daftarMode === 'hrd' ? 'HRD' : daftarMode === 'hod' ? 'HOD' : 'Branch Manager'} (untuk Login dengan Google &amp; Magic Link Reset Password)</label>
                     <input
                       id="emailAkunBaruInput"
                       type="email"
@@ -401,7 +427,7 @@ export default function Landing() {
                     {' '}password akun Google/Gmail pribadi. Boleh pakai alamat Gmail yang sudah ada,
                     aman: sistem ini tidak pernah membaca/mengubah password akun Google aslinya.
                   </p>
-                  {daftarMode === 'hod' && (
+                  {(daftarMode === 'hod' || daftarMode === 'bm') && (
                     <div className="form-field">
                       <label htmlFor="divisiAkunBaruSelect">Divisi</label>
                       <select
@@ -420,7 +446,7 @@ export default function Landing() {
               )}
 
               {daftarAkun.length === 0 ? (
-                <p style={{ textAlign: 'center' }}>Belum ada akun HRD/HOD terdaftar.</p>
+                <p style={{ textAlign: 'center' }}>Belum ada akun HRD/HOD/Branch Manager terdaftar.</p>
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {daftarAkun.map((akun) => (
@@ -433,7 +459,7 @@ export default function Landing() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
                         <span>
                           <strong>{akun.role}</strong>{akun.divisi ? ` · ${akun.divisi}` : ''} — {akun.username} ({akun.email})
-                          {akun.role === 'HOD' && (
+                          {(akun.role === 'HOD' || akun.role === 'Branch Manager') && (
                             <> · Kode Akses: <strong>{akun.kodeAkses || kodeAksesHodDefault()}</strong></>
                           )}
                         </span>
@@ -565,6 +591,26 @@ export default function Landing() {
             <p className="login-subtitle">Pilih portal yang ingin dikelola.</p>
             <div className="dashboard-links">
               <Link to={ROUTES.HOD_MONITORING} className="btn">Portal HOD</Link>
+              <Link to={ROUTES.PROFIL} className="btn btn-secondary">Profil Saya</Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==== Sudah login sebagai Branch Manager (akun Google terdaftar per divisi) ====
+  if (terverifikasiBm) {
+    return (
+      <div>
+        <PortalNav title="Archimax HRIS" items={[]} onKeluar={keluarBm} />
+        <div className="page">
+          <div className="card" style={{ maxWidth: 480, margin: '32px auto', textAlign: 'center' }}>
+            {Logo(140)}
+            <h1 className="login-title">Selamat Datang, Branch Manager {divisiBm}</h1>
+            <p className="login-subtitle">Pilih portal yang ingin dikelola.</p>
+            <div className="dashboard-links">
+              <Link to={ROUTES.BM_MONITORING} className="btn">Portal Branch Manager</Link>
               <Link to={ROUTES.PROFIL} className="btn btn-secondary">Profil Saya</Link>
             </div>
           </div>

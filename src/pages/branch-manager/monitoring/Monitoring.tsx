@@ -5,31 +5,25 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { ROUTES } from '../../../router/routePaths';
-import { useAksesGate } from '../../../shared/hooks/useAksesGate';
-import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
+import { useAksesBranchManager } from '../../../shared/hooks/useAksesBranchManager';
 import { PortalNav } from '../../../shared/components/PortalNav';
 import { Spinner } from '../../../shared/components/Loading';
-import { listKaryawanHod, listRiwayatKpi } from '../../../shared/lib/firestore';
+import { listKaryawan, listRiwayatKpi } from '../../../shared/lib/firestore';
 import type { Karyawan, PenilaianKpi } from '../../../shared/types';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
-interface BarisRanking { karyawan: Karyawan; skorTerakhir: number; skorKedisiplinan: number; periode: string }
+interface BarisRekap { karyawan: Karyawan; skorTerakhir: number; skorKedisiplinan: number; periode: string }
 
 const NAV_ITEMS = [
-  { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik' },
-  { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan' },
-  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM' },
-  { to: ROUTES.HRD_IMPORT, label: 'Import Excel' },
-  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan' },
+  { to: ROUTES.BM_MONITORING, label: 'Monitoring & Rekap' },
+  { to: ROUTES.BM_PENILAIAN, label: 'Form Penilaian KPI' },
 ];
 
-export default function Dashboard() {
-  const { terverifikasi, keluar: keluarHrd } = useAksesGate('akses_hrd');
-  const { keluar: keluarSuperadmin } = useAksesSuperadmin();
-  const keluar = () => { keluarSuperadmin(); keluarHrd(); };
+export default function Monitoring() {
+  const { terverifikasi, divisi, keluar } = useAksesBranchManager();
   const [loading, setLoading] = useState(true);
-  const [ranking, setRanking] = useState<BarisRanking[]>([]);
+  const [rekap, setRekap] = useState<BarisRekap[]>([]);
   const [trendLabels, setTrendLabels] = useState<string[]>([]);
   const [trendData, setTrendData] = useState<number[]>([]);
   const [error, setError] = useState('');
@@ -41,13 +35,12 @@ export default function Dashboard() {
       setLoading(true);
       setError('');
       try {
-        const hodList = await listKaryawanHod();
-        // Ambil riwayat KPI semua HOD/EKSEKUTIF secara paralel (bukan satu-satu berurutan)
-        // supaya waktu muat tidak bertambah linear dengan jumlah karyawan.
-        const riwayatPerKaryawan = await Promise.all(hodList.map((k) => listRiwayatKpi(k.id)));
-        const baris: BarisRanking[] = [];
+        const staffDivisi = (await listKaryawan(divisi)).filter((k) => k.levelUser === 'Staff');
+        // Paralel, bukan satu-satu berurutan — lihat catatan yang sama di Dashboard HRD.
+        const riwayatPerKaryawan = await Promise.all(staffDivisi.map((k) => listRiwayatKpi(k.id)));
+        const baris: BarisRekap[] = [];
         const semuaRiwayat: PenilaianKpi[] = [];
-        hodList.forEach((k, i) => {
+        staffDivisi.forEach((k, i) => {
           const riwayat = riwayatPerKaryawan[i];
           semuaRiwayat.push(...riwayat);
           const terakhir = riwayat[0];
@@ -68,7 +61,7 @@ export default function Dashboard() {
         }
         const periodeSorted = [...perPeriode.keys()].sort();
         if (!batal) {
-          setRanking(baris);
+          setRekap(baris);
           setTrendLabels(periodeSorted);
           setTrendData(periodeSorted.map((p) => {
             const arr = perPeriode.get(p)!;
@@ -76,30 +69,30 @@ export default function Dashboard() {
           }));
         }
       } catch (err) {
-        if (!batal) setError(err instanceof Error ? err.message : 'Gagal memuat data dashboard.');
+        if (!batal) setError(err instanceof Error ? err.message : 'Gagal memuat data monitoring.');
       } finally {
         if (!batal) setLoading(false);
       }
     }
     muat();
     return () => { batal = true; };
-  }, [terverifikasi]);
+  }, [terverifikasi, divisi]);
 
-  if (!terverifikasi) return <Navigate to={ROUTES.HRD_AKSES} replace />;
+  if (!terverifikasi) return <Navigate to={ROUTES.BM_AKSES} replace />;
 
   return (
     <div>
-      <PortalNav title="Master File HRD" items={NAV_ITEMS} onKeluar={keluar} />
+      <PortalNav title={`Portal Branch Manager — ${divisi}`} items={NAV_ITEMS} onKeluar={keluar} />
       <div className="page">
-        <h1>Homepage &amp; Grafik</h1>
-        <p>Tren performa KPI perusahaan dan ranking Level User HOD/Branch Manager/EKSEKUTIF.</p>
+        <h1>Monitoring &amp; Rekap</h1>
+        <p>Rekap seluruh staff divisi <strong>{divisi}</strong> secara real-time. Otoritas data terbatas hanya divisi ini.</p>
 
         <div className="card">
-          <h2>Tren Skor Rata-rata Perusahaan</h2>
+          <h2>Tren Skor Rata-rata Divisi</h2>
           {loading ? (
             <Spinner label="Memuat grafik tren..." />
           ) : trendLabels.length === 0 ? (
-            <p>Belum ada data penilaian KPI untuk ditampilkan.</p>
+            <p>Belum ada data penilaian KPI untuk divisi ini.</p>
           ) : (
             <div className="chart-wrap">
               <Line
@@ -120,28 +113,28 @@ export default function Dashboard() {
         </div>
 
         <div className="card">
-          <h2>Ranking Level User HOD/Branch Manager/EKSEKUTIF</h2>
+          <h2>Rekap Staff ({rekap.length})</h2>
           {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
           {loading ? (
             <>
               <div className="skeleton-row" /><div className="skeleton-row" /><div className="skeleton-row" />
             </>
-          ) : ranking.length === 0 ? (
-            <p>Belum ada karyawan dengan Level User HOD/Branch Manager/EKSEKUTIF terdaftar.</p>
+          ) : rekap.length === 0 ? (
+            <p>Belum ada Staff terdaftar di divisi ini. Tambahkan lewat Kelola Karyawan (Master File HRD).</p>
           ) : (
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Nama</th><th>Divisi</th><th>Periode Terakhir</th>
+                    <th>Nama Staff</th><th>Jabatan</th><th>Periode Terakhir</th>
                     <th>Skor Hard Skill</th><th>Skor Kedisiplinan</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {ranking.map((r) => (
+                  {rekap.map((r) => (
                     <tr key={r.karyawan.id}>
                       <td>{r.karyawan.namaLengkap}</td>
-                      <td>{r.karyawan.divisi}</td>
+                      <td>{r.karyawan.jabatan}</td>
                       <td>{r.periode}</td>
                       <td>{r.skorTerakhir.toFixed(2)}</td>
                       <td>

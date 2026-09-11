@@ -13,7 +13,7 @@ import type { Karyawan } from '../../../shared/types';
 const NAV_ITEMS = [
   { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik' },
   { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan' },
-  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD' },
+  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM' },
   { to: ROUTES.HRD_IMPORT, label: 'Import Excel' },
   { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan' },
 ];
@@ -49,11 +49,11 @@ export default function Penilaian() {
       <PortalNav title="Master File HRD" items={NAV_ITEMS} onKeluar={keluar} />
       <div className="page">
         <h1>Form Penilaian Karyawan</h1>
-        <p>Master File HRD hanya menilai KPI untuk karyawan dengan Level User <strong>HOD</strong> atau <strong>EKSEKUTIF</strong>. Penilaian Staff dilakukan HOD masing-masing divisi lewat Portal HOD.</p>
+        <p>Master File HRD hanya menilai KPI untuk karyawan dengan Level User <strong>HOD</strong>, <strong>Branch Manager</strong>, atau <strong>EKSEKUTIF</strong>. Penilaian Staff dilakukan HOD/Branch Manager masing-masing divisi lewat portalnya sendiri.</p>
         {loading ? (
           <Spinner label="Memuat daftar HOD & EKSEKUTIF..." />
         ) : hodList.length === 0 ? (
-          <p className="card">Belum ada karyawan Level User HOD/EKSEKUTIF terdaftar. Tambahkan lewat menu Kelola Karyawan.</p>
+          <p className="card">Belum ada karyawan Level User HOD/Branch Manager/EKSEKUTIF terdaftar. Tambahkan lewat menu Kelola Karyawan.</p>
         ) : (
           <KpiForm targets={hodList} dinilaiOleh="HRD" />
         )}

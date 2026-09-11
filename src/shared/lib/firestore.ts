@@ -21,11 +21,11 @@ export async function listKaryawan(divisi?: string): Promise<Karyawan[]> {
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) }));
 }
 
-// Dinilai lewat Master File HRD: HOD dan EKSEKUTIF (keduanya level "atas", bukan Staff
-// yang dinilai HOD masing-masing divisi lewat Portal HOD).
+// Dinilai lewat Master File HRD: HOD, Branch Manager, dan EKSEKUTIF (ketiganya level "atas",
+// bukan Staff yang dinilai HOD/Branch Manager masing-masing divisi lewat portalnya sendiri).
 export async function listKaryawanHod(): Promise<Karyawan[]> {
   const col = collection(db, KARYAWAN_COL);
-  const q = query(col, where('levelUser', 'in', ['HOD', 'EKSEKUTIF']));
+  const q = query(col, where('levelUser', 'in', ['HOD', 'EKSEKUTIF', 'Branch Manager']));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) }));
 }
@@ -60,10 +60,9 @@ export async function hapusKaryawan(id: string): Promise<void> {
 }
 
 export async function cariKaryawanByNip(nip: string): Promise<Karyawan | null> {
-  const nipTrimmed = nip.trim();
-  if (!nipTrimmed) return null;
+  if (!nip) return null;
   const col = collection(db, KARYAWAN_COL);
-  const snap = await getDocs(query(col, where('nip', '==', nipTrimmed)));
+  const snap = await getDocs(query(col, where('nip', '==', nip)));
   if (snap.empty) return null;
   const d = snap.docs[0];
   return { id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) };
@@ -77,10 +76,9 @@ export async function cariKaryawanByNip(nip: string): Promise<Karyawan | null> {
 // mengembalikan salinan lain duluan. Dengan daftar lengkap ini, pemanggil bisa exclude id yang
 // sedang diedit dan baru anggap bentrok kalau MASIH ada sisa dokumen lain dengan NIP sama.
 export async function cariSemuaKaryawanByNip(nip: string): Promise<Karyawan[]> {
-  const nipTrimmed = nip.trim();
-  if (!nipTrimmed) return [];
+  if (!nip) return [];
   const col = collection(db, KARYAWAN_COL);
-  const snap = await getDocs(query(col, where('nip', '==', nipTrimmed)));
+  const snap = await getDocs(query(col, where('nip', '==', nip)));
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) }));
 }
 
@@ -130,7 +128,7 @@ export function kodeAksesRaporDefault(k: Pick<Karyawan, 'nik'>): string {
 // ============================================================
 const PENILAIAN_COL = 'penilaianKpi';
 
-export async function simpanPenilaianKpi(form: PenilaianKpiForm, dinilaiOleh: 'HRD' | 'HOD'): Promise<void> {
+export async function simpanPenilaianKpi(form: PenilaianKpiForm, dinilaiOleh: 'HRD' | 'HOD' | 'Branch Manager'): Promise<void> {
   await addDoc(collection(db, PENILAIAN_COL), {
     ...form,
     dinilaiOleh,
@@ -145,7 +143,7 @@ export async function listRiwayatKpi(karyawanId: string): Promise<PenilaianKpi[]
   return snap.docs.map((d) => {
     const data = d.data() as Record<string, unknown>;
     const ts = data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : Date.now();
-    return { id: d.id, ...(data as unknown as PenilaianKpiForm), timestamp: ts, dinilaiOleh: data.dinilaiOleh as 'HRD' | 'HOD' };
+    return { id: d.id, ...(data as unknown as PenilaianKpiForm), timestamp: ts, dinilaiOleh: data.dinilaiOleh as 'HRD' | 'HOD' | 'Branch Manager' };
   });
 }
 
@@ -248,21 +246,36 @@ export async function listAkunPortal(): Promise<AkunPortal[]> {
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AkunPortal, 'id'>) }));
 }
 
-/** Semua akun HOD (opsional difilter per Divisi), dipakai halaman Portal HOD & Kelola Kode Akses. */
-export async function listAkunPortalHod(divisi?: string): Promise<AkunPortal[]> {
+/**
+ * Semua akun HOD ATAU Branch Manager (opsional difilter per Divisi & per role), dipakai halaman
+ * Portal HOD, Portal Branch Manager & Kelola Kode Akses. `role` default 'HOD' supaya pemanggil
+ * lama (belum diubah) tetap berperilaku sama persis seperti sebelum Branch Manager ditambahkan.
+ */
+export async function listAkunPortalHod(divisi?: string, role: 'HOD' | 'Branch Manager' = 'HOD'): Promise<AkunPortal[]> {
   const semua = await listAkunPortal();
-  return semua.filter((a) => a.role === 'HOD' && (!divisi || a.divisi === divisi));
+  return semua.filter((a) => a.role === role && (!divisi || a.divisi === divisi));
+}
+
+/** Semua akun HOD + Branch Manager sekaligus (opsional difilter per Divisi) — dipakai halaman "Kelola Kode Akses". */
+export async function listAkunPortalHodDanBranchManager(divisi?: string): Promise<AkunPortal[]> {
+  const semua = await listAkunPortal();
+  return semua.filter((a) => (a.role === 'HOD' || a.role === 'Branch Manager') && (!divisi || a.divisi === divisi));
 }
 
 /**
- * Cocokkan Divisi + Kode Akses pribadi yang diketik di gerbang Portal HOD (/hod/akses) ke salah
- * satu akun HOD terdaftar pada divisi itu. Satu divisi boleh punya beberapa akun HOD dengan
- * Kode Akses masing-masing berbeda — dicek satu per satu sampai ketemu yang cocok.
+ * Cocokkan Divisi + Kode Akses pribadi yang diketik di gerbang Portal HOD (/hod/akses) atau
+ * Portal Branch Manager (/branch-manager/akses) ke salah satu akun terdaftar (role yang sesuai)
+ * pada divisi itu. Satu divisi boleh punya beberapa akun dengan Kode Akses masing-masing
+ * berbeda — dicek satu per satu sampai ketemu yang cocok.
  */
-export async function cariAkunPortalHodByDivisiDanKode(divisi: string, kode: string): Promise<AkunPortal | null> {
+export async function cariAkunPortalHodByDivisiDanKode(
+  divisi: string,
+  kode: string,
+  role: 'HOD' | 'Branch Manager' = 'HOD',
+): Promise<AkunPortal | null> {
   const kodeBersih = kode.trim();
   if (!kodeBersih) return null;
-  const akunDivisi = await listAkunPortalHod(divisi);
+  const akunDivisi = await listAkunPortalHod(divisi, role);
   return akunDivisi.find((a) => (a.kodeAkses || KODE_AKSES_HOD_DEFAULT) === kodeBersih) || null;
 }
 
@@ -301,7 +314,7 @@ export async function cariAkunPortalByIdentitas(identitas: string): Promise<Akun
 }
 
 export async function daftarkanAkunPortal(data: {
-  username: string; email: string; password: string; role: 'HRD' | 'HOD'; divisi?: string;
+  username: string; email: string; password: string; role: 'HRD' | 'HOD' | 'Branch Manager'; divisi?: string;
 }): Promise<string> {
   const usernameBersih = data.username.toLowerCase().trim();
   const emailBersih = data.email.toLowerCase().trim();
@@ -321,10 +334,10 @@ export async function daftarkanAkunPortal(data: {
     username: usernameBersih,
     email: emailBersih,
     role: data.role,
-    // Setiap akun HOD baru langsung dibekali Kode Akses (PIN) pribadinya sendiri, dimulai dari
-    // nilai default — beda dengan akun HOD lain walau divisinya sama. Superadmin bisa
-    // menggantinya kapan saja lewat menu "Kelola Kode Akses".
-    ...(data.role === 'HOD' ? { divisi: data.divisi, kodeAkses: KODE_AKSES_HOD_DEFAULT } : {}),
+    // Setiap akun HOD/Branch Manager baru langsung dibekali Kode Akses (PIN) pribadinya
+    // sendiri, dimulai dari nilai default — beda dengan akun lain walau divisinya sama.
+    // Superadmin bisa menggantinya kapan saja lewat menu "Kelola Kode Akses".
+    ...(data.role === 'HOD' || data.role === 'Branch Manager' ? { divisi: data.divisi, kodeAkses: KODE_AKSES_HOD_DEFAULT } : {}),
     createdAt: Date.now(),
   });
   return ref.id;

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ROUTES } from '../../../router/routePaths';
 import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useToast } from '../../../shared/hooks/useToast';
-import { listAkunPortalHod, setKodeAksesAkunPortal, kodeAksesHodDefault } from '../../../shared/lib/firestore';
+import { listAkunPortalHodDanBranchManager, setKodeAksesAkunPortal, kodeAksesHodDefault } from '../../../shared/lib/firestore';
 import { DAFTAR_DIVISI } from '../../../shared/constants/kpi';
 import { Spinner } from '../../../shared/components/Loading';
 import { SuperadminLoginGate } from '../../../shared/components/SuperadminLoginGate';
@@ -11,9 +11,9 @@ import type { AkunPortal } from '../../../shared/types';
 
 const KODE_DEFAULT = kodeAksesHodDefault();
 
-// Baris satu akun HOD — komponen top-level (BUKAN didefinisikan di dalam KelolaKodeAksesHod)
-// supaya input Kode Akses tidak kehilangan fokus/kursor tiap 1 huruf diketik saat parent
-// re-render (lihat WebRules poin 11).
+// Baris satu akun HOD/Branch Manager — komponen top-level (BUKAN didefinisikan di dalam
+// KelolaKodeAksesHod) supaya input Kode Akses tidak kehilangan fokus/kursor tiap 1 huruf
+// diketik saat parent re-render (lihat WebRules poin 11).
 function BarisAkunHod({
   akun, kode, loading, onUbahKode, onSimpan, onReset,
 }: {
@@ -74,7 +74,7 @@ export default function KelolaKodeAksesHod() {
     if (!terverifikasi) return;
     let batal = false;
     setLoadingMuat(true);
-    listAkunPortalHod()
+    listAkunPortalHodDanBranchManager()
       .then((akun) => {
         if (batal) return;
         setDaftarAkun(akun);
@@ -126,53 +126,70 @@ export default function KelolaKodeAksesHod() {
   if (!terverifikasi) {
     return (
       <SuperadminLoginGate
-        title="Kelola Kode Akses HOD"
-        description="Login sebagai Superadmin untuk mengelola Kode Akses pribadi setiap akun HOD."
+        title="Kelola Kode Akses HOD & Branch Manager"
+        description="Login sebagai Superadmin untuk mengelola Kode Akses pribadi setiap akun HOD dan Branch Manager."
         loginManual={loginManual}
         loginGoogle={loginGoogle}
       />
     );
   }
 
-  const akunPerDivisi = DAFTAR_DIVISI
-    .map((divisi) => ({ divisi, akun: daftarAkun.filter((a) => a.divisi === divisi) }))
-    .filter((grup) => grup.akun.length > 0);
+  // Dikelompokkan per role dulu (HOD lalu Branch Manager), baru per Divisi di dalamnya — supaya
+  // dua role yang kebetulan ada di divisi yang sama tetap tampil sebagai grup terpisah.
+  const ROLE_LIST: Array<{ role: 'HOD' | 'Branch Manager'; label: string }> = [
+    { role: 'HOD', label: 'HOD' },
+    { role: 'Branch Manager', label: 'Branch Manager' },
+  ];
+  const akunPerRoleDanDivisi = ROLE_LIST.map(({ role, label }) => ({
+    role,
+    label,
+    grupDivisi: DAFTAR_DIVISI
+      .map((divisi) => ({ divisi, akun: daftarAkun.filter((a) => a.role === role && a.divisi === divisi) }))
+      .filter((grup) => grup.akun.length > 0),
+  })).filter((grup) => grup.grupDivisi.length > 0);
 
   return (
     <div className="page">
       <div className="card">
-        <h1>Kelola Kode Akses HOD</h1>
+        <h1>Kelola Kode Akses HOD &amp; Branch Manager</h1>
         <p>
-          Setiap akun HOD punya Kode Akses (PIN) pribadi sendiri untuk masuk ke Portal HOD
-          (bukan kode bersama per divisi lagi). Akun HOD baru otomatis dibekali kode default{' '}
-          <strong>{KODE_DEFAULT}</strong> — ganti di sini kapan saja.
+          Setiap akun HOD maupun Branch Manager punya Kode Akses (PIN) pribadi sendiri untuk
+          masuk ke portal masing-masing (bukan kode bersama per divisi). Akun baru otomatis
+          dibekali kode default <strong>{KODE_DEFAULT}</strong> — ganti di sini kapan saja.
         </p>
 
         {loadingMuat ? (
-          <Spinner label="Memuat daftar akun HOD..." />
-        ) : akunPerDivisi.length === 0 ? (
+          <Spinner label="Memuat daftar akun HOD & Branch Manager..." />
+        ) : akunPerRoleDanDivisi.length === 0 ? (
           <p>
-            Belum ada akun HOD terdaftar. Daftarkan lewat menu &quot;+ Daftarkan Akun HRD/HOD&quot;
-            di Welcome Page terlebih dahulu.
+            Belum ada akun HOD/Branch Manager terdaftar. Daftarkan lewat menu &quot;+ Daftarkan
+            Akun HRD/HOD/Branch Manager&quot; di Welcome Page terlebih dahulu.
           </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 8 }}>
-            {akunPerDivisi.map((grup) => (
-              <div key={grup.divisi}>
-                <h2 style={{ fontSize: '1rem', marginBottom: 8 }}>{grup.divisi}</h2>
-                <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {grup.akun.map((akun) => (
-                    <BarisAkunHod
-                      key={akun.id}
-                      akun={akun}
-                      kode={kodeInput[akun.id] ?? ''}
-                      loading={loadingId === akun.id}
-                      onUbahKode={ubahKode}
-                      onSimpan={simpanKode}
-                      onReset={resetKode}
-                    />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 26, marginTop: 8 }}>
+            {akunPerRoleDanDivisi.map((grupRole) => (
+              <div key={grupRole.role}>
+                <h2 style={{ fontSize: '1.05rem', marginBottom: 12 }}>Portal {grupRole.label}</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                  {grupRole.grupDivisi.map((grup) => (
+                    <div key={grup.divisi}>
+                      <h3 style={{ fontSize: '0.95rem', marginBottom: 8 }}>{grup.divisi}</h3>
+                      <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {grup.akun.map((akun) => (
+                          <BarisAkunHod
+                            key={akun.id}
+                            akun={akun}
+                            kode={kodeInput[akun.id] ?? ''}
+                            loading={loadingId === akun.id}
+                            onUbahKode={ubahKode}
+                            onSimpan={simpanKode}
+                            onReset={resetKode}
+                          />
+                        ))}
+                      </ul>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             ))}
           </div>

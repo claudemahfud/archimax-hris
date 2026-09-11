@@ -60,6 +60,8 @@ export function useAksesSuperadmin() {
     sessionStorage.removeItem('akses_hrd');
     sessionStorage.removeItem('akses_hod');
     sessionStorage.removeItem('akses_hod_divisi');
+    sessionStorage.removeItem('akses_branch_manager');
+    sessionStorage.removeItem('akses_branch_manager_divisi');
     hapusSesiAkun();
     setTerverifikasi(false);
     if (auth.currentUser) signOut(auth).catch(() => undefined);
