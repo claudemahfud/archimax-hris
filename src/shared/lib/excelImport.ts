@@ -49,6 +49,20 @@ function toAngka(v: unknown): number {
   return isNaN(n) ? 0 : n;
 }
 
+// Beberapa file sumber (isian manual HRD lama) menggabungkan "Tempat Lahir" & "Tanggal Lahir"
+// jadi satu teks di kolom "Tempat Lahir" saja, mis. "Batam, 19-02-2003", dan kolom "Tanggal
+// Lahir" dibiarkan kosong terpisah. Kalau dibiarkan apa adanya, hasil import jadi rancu (Tempat
+// Lahir kepanjangan, Tanggal Lahir kosong padahal datanya sebenarnya ADA, cuma nyempil).
+// Fungsi ini pecah pola "<kota>, <tanggal>" itu jadi dua nilai yang benar.
+const POLA_TEMPAT_TANGGAL_GABUNG = /^(.+?),\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s*$/;
+
+function pisahTempatTanggalLahir(tempatLahirMentah: string, tanggalLahirMentah: string): { tempatLahir: string; tanggalLahir: string; dipisahOtomatis: boolean } {
+  if (tanggalLahirMentah || !tempatLahirMentah) return { tempatLahir: tempatLahirMentah, tanggalLahir: tanggalLahirMentah, dipisahOtomatis: false };
+  const cocok = tempatLahirMentah.match(POLA_TEMPAT_TANGGAL_GABUNG);
+  if (!cocok) return { tempatLahir: tempatLahirMentah, tanggalLahir: tanggalLahirMentah, dipisahOtomatis: false };
+  return { tempatLahir: cocok[1].trim(), tanggalLahir: cocok[2].replace(/-/g, '/'), dipisahOtomatis: true };
+}
+
 function sheetKeGrid(ws: XLSX.WorkSheet): Grid {
   return XLSX.utils.sheet_to_json<(string | number | Date | null)[]>(ws, {
     header: 1,
@@ -136,6 +150,13 @@ export async function parseKaryawanExcel(file: File): Promise<HasilImportExcel> 
   if (!divisiDitemukan) {
     peringatan.push(`"Divisi" tidak ditemukan di file, diisi sementara dengan "${DIVISI_BUTUH_KONFIRMASI}" — mohon pilih divisi yang benar secara manual sebelum disimpan.`);
   }
+  const { tempatLahir, tanggalLahir, dipisahOtomatis } = pisahTempatTanggalLahir(
+    ambilField(grid, ['Tempat Lahir'], ['Tempat Lahir', 'Tempat/Tgl Lahir'], peringatan, 'Tempat Lahir'),
+    ambilField(grid, ['Tanggal Lahir'], ['Tanggal Lahir', 'Tempat/Tgl Lahir'], peringatan, 'Tanggal Lahir'),
+  );
+  if (dipisahOtomatis) {
+    peringatan.push(`"Tempat Lahir" & "Tanggal Lahir" ditemukan digabung jadi satu teks di file ("${tempatLahir}, ${tanggalLahir}") — sudah otomatis dipisah, mohon cek hasilnya benar.`);
+  }
 
   const karyawan: Omit<Karyawan, 'id' | 'createdAt' | 'updatedAt'> = {
     nip,
@@ -156,8 +177,8 @@ export async function parseKaryawanExcel(file: File): Promise<HasilImportExcel> 
     performanceInsentive: toAngka(ambilDariHeaderRow(grid, ['Performance Insentive', 'Performance Insentife'])),
     estimasiTakeHomePay: toAngka(ambilDariHeaderRow(grid, ['Estimasi Take Home Pay'])),
     nik: ambilField(grid, ['NIK'], ['NIK'], peringatan, 'NIK'),
-    tempatLahir: ambilField(grid, ['Tempat Lahir'], ['Tempat Lahir', 'Tempat/Tgl Lahir'], peringatan, 'Tempat Lahir'),
-    tanggalLahir: ambilField(grid, ['Tanggal Lahir'], ['Tanggal Lahir', 'Tempat/Tgl Lahir'], peringatan, 'Tanggal Lahir'),
+    tempatLahir,
+    tanggalLahir,
     jenisKelamin: ambilField(grid, ['Jenis Kelamin'], ['Jenis Kelamin'], peringatan, 'Jenis Kelamin'),
     alamatKtp: ambilField(grid, ['Alamat KTP'], ['Alamat KTP'], peringatan, 'Alamat KTP'),
     alamatDomisili: ambilField(grid, ['Alamat Domisili'], ['Alamat Domisili'], peringatan, 'Alamat Domisili'),

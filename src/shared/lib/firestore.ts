@@ -68,6 +68,20 @@ export async function cariKaryawanByNip(nip: string): Promise<Karyawan | null> {
   return { id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) };
 }
 
+// Sama seperti cariKaryawanByNip, tapi kembalikan SEMUA dokumen dengan NIP itu (bukan cuma
+// yang pertama ketemu). Dipakai untuk cek duplikat saat EDIT: kalau query NIP kebetulan
+// mengembalikan lebih dari satu dokumen (mis. ada duplikat lama dari sebelum validasi NIP
+// ditambahkan), cariKaryawanByNip yang cuma ambil docs[0] bisa salah menuduh dokumen yang
+// SEDANG diedit sebagai "bentrok dengan dirinya sendiri" kalau urutan hasil query kebetulan
+// mengembalikan salinan lain duluan. Dengan daftar lengkap ini, pemanggil bisa exclude id yang
+// sedang diedit dan baru anggap bentrok kalau MASIH ada sisa dokumen lain dengan NIP sama.
+export async function cariSemuaKaryawanByNip(nip: string): Promise<Karyawan[]> {
+  if (!nip) return [];
+  const col = collection(db, KARYAWAN_COL);
+  const snap = await getDocs(query(col, where('nip', '==', nip)));
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) }));
+}
+
 // ============================================================
 // SECTION: Import Excel (satu-jalan migrasi dari spreadsheet lama)
 // ============================================================

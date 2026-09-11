@@ -6,7 +6,7 @@ import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useToast } from '../../../shared/hooks/useToast';
 import { PortalNav } from '../../../shared/components/PortalNav';
 import { Spinner } from '../../../shared/components/Loading';
-import { listKaryawan, tambahKaryawan, editKaryawan, hapusKaryawan, kodeAksesRaporDefault, cariKaryawanByNip } from '../../../shared/lib/firestore';
+import { listKaryawan, tambahKaryawan, editKaryawan, hapusKaryawan, kodeAksesRaporDefault, cariKaryawanByNip, cariSemuaKaryawanByNip } from '../../../shared/lib/firestore';
 import { uploadGambarKeCloudinary } from '../../../shared/lib/cloudinary';
 import { parseKaryawanExcel } from '../../../shared/lib/excelImport';
 import { DAFTAR_DIVISI } from '../../../shared/constants/kpi';
@@ -153,10 +153,13 @@ export default function Karyawan() {
     try {
       if (editId) {
         // Cek NIP dobel juga saat edit (kalau NIP diubah ke NIP milik karyawan lain).
+        // Pakai cariSemuaKaryawanByNip (bukan cariKaryawanByNip) dan exclude editId sendiri —
+        // supaya kalau ada duplikat NIP lama di database, dokumen yang SEDANG diedit tidak
+        // salah dituduh "bentrok dengan dirinya sendiri" hanya karena urutan hasil query.
         if (form.nip) {
-          const bentrok = await cariKaryawanByNip(form.nip);
-          if (bentrok && bentrok.id !== editId) {
-            showToast('error', `NIP "${form.nip}" sudah dipakai oleh ${bentrok.namaLengkap}. Gunakan NIP lain.`);
+          const semuaBentrok = (await cariSemuaKaryawanByNip(form.nip)).filter((k) => k.id !== editId);
+          if (semuaBentrok.length > 0) {
+            showToast('error', `NIP "${form.nip}" sudah dipakai oleh ${semuaBentrok[0].namaLengkap}. Gunakan NIP lain.`);
             setSaving(false);
             return;
           }
