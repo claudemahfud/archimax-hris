@@ -114,14 +114,14 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
       <h2>Form Penilaian KPI</h2>
 
       <div className="form-grid">
-        <div className="form-field">
+        <div className="form-field span-6">
           <label htmlFor="kpiKaryawan">Karyawan</label>
           <select id="kpiKaryawan" value={karyawanId} onChange={(e) => setKaryawanId(e.target.value)} required>
             <option value="">-- Pilih Karyawan --</option>
             {targets.map((k) => <option key={k.id} value={k.id}>{k.namaLengkap} ({k.divisi})</option>)}
           </select>
         </div>
-        <div className="form-field">
+        <div className="form-field span-6">
           <label htmlFor="periodeMinggu">Periode Minggu</label>
           <input id="periodeMinggu" type="text" placeholder="mis. Minggu 2 - Sep 2026" value={periodeMinggu}
             onChange={(e) => setPeriodeMinggu(e.target.value)} required />
@@ -133,7 +133,7 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
           <h3>Penilaian Hard Skill (skala 0–100)</h3>
           <div className="form-grid">
             {aspekLabel.map((label, i) => (
-              <div className="form-field" key={label + i}>
+              <div className="form-field span-3" key={label + i}>
                 <label htmlFor={`aspek-${i}`}>{label}</label>
                 <input
                   id={`aspek-${i}`} type="number" min={0} max={100} className="skor-aspek"
@@ -151,7 +151,7 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
           <h3>Soft Skills / Kedisiplinan &amp; SOP</h3>
           <div className="form-grid">
             {SOFT_SKILL_FIELDS.map((f) => (
-              <div className="form-field" key={f.key}>
+              <div className="form-field span-3" key={f.key}>
                 <label htmlFor={`soft-${f.key}`}>{f.label}</label>
                 <input
                   id={`soft-${f.key}`} type="number" min={0} className="soft-input"
@@ -165,7 +165,7 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
           <p><strong>Skor Kedisiplinan / SOP Akhir:</strong>{' '}
             <span className={`badge ${skorKedisiplinan >= 80 ? 'badge-good' : 'badge-bad'}`}>{skorKedisiplinan.toFixed(2)}</span>
           </p>
-          <div className="form-field">
+          <div className="form-field span-6">
             <label htmlFor="keteranganCustom">Keterangan Custom Poin</label>
             <input id="keteranganCustom" type="text" value={catatan.keteranganCustom}
               onChange={(e) => setCatatan((p) => ({ ...p, keteranganCustom: e.target.value }))} />
@@ -177,10 +177,10 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
             <TextArea label="Kekurangan" value={catatan.kekurangan} onChange={(v) => setCatatan((p) => ({ ...p, kekurangan: v }))} />
             <TextArea label="Rekomendasi" value={catatan.rekomendasi} onChange={(v) => setCatatan((p) => ({ ...p, rekomendasi: v }))} />
             <TextArea label="Potensi Karier" value={catatan.potensiKarier} onChange={(v) => setCatatan((p) => ({ ...p, potensiKarier: v }))} />
-            <Field label="Status Rekomendasi" value={catatan.statusRekomendasi} onChange={(v) => setCatatan((p) => ({ ...p, statusRekomendasi: v }))} />
-            <Field label="Kenaikan Salary" value={catatan.kenaikanSalary} onChange={(v) => setCatatan((p) => ({ ...p, kenaikanSalary: v }))} />
-            <Field label="Training" value={catatan.training} onChange={(v) => setCatatan((p) => ({ ...p, training: v }))} />
-            <Field label="Evaluasi Berikutnya" type="date" value={catatan.evaluasiBerikutnya} onChange={(v) => setCatatan((p) => ({ ...p, evaluasiBerikutnya: v }))} />
+            <Field label="Status Rekomendasi" value={catatan.statusRekomendasi} onChange={(v) => setCatatan((p) => ({ ...p, statusRekomendasi: v }))} span={3} />
+            <Field label="Kenaikan Salary" value={catatan.kenaikanSalary} onChange={(v) => setCatatan((p) => ({ ...p, kenaikanSalary: v }))} span={3} />
+            <Field label="Training" value={catatan.training} onChange={(v) => setCatatan((p) => ({ ...p, training: v }))} span={3} />
+            <Field label="Evaluasi Berikutnya" type="date" value={catatan.evaluasiBerikutnya} onChange={(v) => setCatatan((p) => ({ ...p, evaluasiBerikutnya: v }))} span={3} />
           </div>
         </>
       )}
@@ -192,20 +192,20 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
   );
 }
 
-function Field({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
+function Field({ label, value, onChange, type = 'text', span = 6 }: { label: string; value: string; onChange: (v: string) => void; type?: string; span?: number }) {
   const id = `field-${label.toLowerCase().replace(/\s+/g, '-')}`;
   return (
-    <div className="form-field">
+    <div className={`form-field span-${span}`}>
       <label htmlFor={id}>{label}</label>
       <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
   );
 }
 
-function TextArea({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+function TextArea({ label, value, onChange, span = 6 }: { label: string; value: string; onChange: (v: string) => void; span?: number }) {
   const id = `ta-${label.toLowerCase().replace(/\s+/g, '-')}`;
   return (
-    <div className="form-field">
+    <div className={`form-field span-${span}`}>
       <label htmlFor={id}>{label}</label>
       <textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} />
     </div>
