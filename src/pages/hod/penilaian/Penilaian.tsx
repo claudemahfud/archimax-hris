@@ -3,15 +3,16 @@ import { Navigate } from 'react-router-dom';
 import { ROUTES } from '../../../router/routePaths';
 import { useAksesHod } from '../../../shared/hooks/useAksesHod';
 import { useToast } from '../../../shared/hooks/useToast';
-import { PortalNav } from '../../../shared/components/PortalNav';
+import { AppShell } from '../../../shared/components/AppShell';
 import { KpiForm } from '../../../shared/components/KpiForm';
 import { Spinner } from '../../../shared/components/Loading';
 import { listKaryawan } from '../../../shared/lib/firestore';
 import type { Karyawan } from '../../../shared/types';
+import { IconMonitor, IconClipboardList } from '../../../shared/components/Icons';
 
 const NAV_ITEMS = [
-  { to: ROUTES.HOD_MONITORING, label: 'Monitoring & Rekap' },
-  { to: ROUTES.HOD_PENILAIAN, label: 'Form Penilaian KPI' },
+  { to: ROUTES.HOD_MONITORING, label: 'Monitoring & Rekap', icon: <IconMonitor /> },
+  { to: ROUTES.HOD_PENILAIAN, label: 'Form Penilaian KPI', icon: <IconClipboardList /> },
 ];
 
 export default function Penilaian() {
@@ -40,19 +41,16 @@ export default function Penilaian() {
   if (!terverifikasi) return <Navigate to={ROUTES.HOD_AKSES} replace />;
 
   return (
-    <div>
-      <PortalNav title={`Portal HOD — ${divisi}`} items={NAV_ITEMS} onKeluar={keluar} />
-      <div className="page">
-        <h1>Form Penilaian KPI Staff</h1>
-        <p>Menilai KPI &amp; Soft Skills untuk seluruh Staff di divisi <strong>{divisi}</strong> saja.</p>
-        {loading ? (
-          <Spinner label="Memuat daftar staff..." />
-        ) : staffList.length === 0 ? (
-          <p className="card">Belum ada Staff terdaftar di divisi ini. Tambahkan lewat Kelola Karyawan (Master File HRD).</p>
-        ) : (
-          <KpiForm targets={staffList} dinilaiOleh="HOD" onSubmitted={muat} />
-        )}
-      </div>
-    </div>
+    <AppShell portalTitle={`Portal HOD — ${divisi}`} pageTitle="Form Penilaian KPI Staff" items={NAV_ITEMS} onKeluar={keluar}>
+      <h1>Form Penilaian KPI Staff</h1>
+      <p>Menilai KPI &amp; Soft Skills untuk seluruh Staff di divisi <strong>{divisi}</strong> saja.</p>
+      {loading ? (
+        <Spinner label="Memuat daftar staff..." />
+      ) : staffList.length === 0 ? (
+        <p className="card">Belum ada Staff terdaftar di divisi ini. Tambahkan lewat Kelola Karyawan (Master File HRD).</p>
+      ) : (
+        <KpiForm targets={staffList} dinilaiOleh="HOD" onSubmitted={muat} />
+      )}
+    </AppShell>
   );
 }

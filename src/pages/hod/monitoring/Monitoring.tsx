@@ -6,18 +6,19 @@ import {
 import { Line } from 'react-chartjs-2';
 import { ROUTES } from '../../../router/routePaths';
 import { useAksesHod } from '../../../shared/hooks/useAksesHod';
-import { PortalNav } from '../../../shared/components/PortalNav';
+import { AppShell } from '../../../shared/components/AppShell';
 import { Spinner } from '../../../shared/components/Loading';
 import { listKaryawan, listRiwayatKpi } from '../../../shared/lib/firestore';
 import type { Karyawan, PenilaianKpi } from '../../../shared/types';
+import { IconMonitor, IconClipboardList, IconUsers, IconTrophy } from '../../../shared/components/Icons';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
 interface BarisRekap { karyawan: Karyawan; skorTerakhir: number; skorKedisiplinan: number; periode: string }
 
 const NAV_ITEMS = [
-  { to: ROUTES.HOD_MONITORING, label: 'Monitoring & Rekap' },
-  { to: ROUTES.HOD_PENILAIAN, label: 'Form Penilaian KPI' },
+  { to: ROUTES.HOD_MONITORING, label: 'Monitoring & Rekap', icon: <IconMonitor /> },
+  { to: ROUTES.HOD_PENILAIAN, label: 'Form Penilaian KPI', icon: <IconClipboardList /> },
 ];
 
 export default function Monitoring() {
@@ -80,14 +81,46 @@ export default function Monitoring() {
 
   if (!terverifikasi) return <Navigate to={ROUTES.HOD_AKSES} replace />;
 
-  return (
-    <div>
-      <PortalNav title={`Portal HOD — ${divisi}`} items={NAV_ITEMS} onKeluar={keluar} />
-      <div className="page">
-        <h1>Monitoring &amp; Rekap</h1>
-        <p>Rekap seluruh staff divisi <strong>{divisi}</strong> secara real-time. Otoritas data terbatas hanya divisi ini.</p>
+  const rataRataTerakhir = rekap.length
+    ? rekap.reduce((a, r) => a + r.skorTerakhir, 0) / rekap.length
+    : 0;
 
-        <div className="card">
+  return (
+    <AppShell portalTitle={`Portal HOD — ${divisi}`} pageTitle="Monitoring & Rekap" items={NAV_ITEMS} onKeluar={keluar}>
+      <h1>Monitoring &amp; Rekap</h1>
+      <p>Rekap seluruh staff divisi <strong>{divisi}</strong> secara real-time. Otoritas data terbatas hanya divisi ini.</p>
+
+      <div className="dash-grid">
+        <div className="card metric-card metric-card-amber dash-span-4">
+          <div className="metric-card-head">
+            <span className="metric-card-label">Total Staff Divisi</span>
+            <span className="metric-card-icon"><IconUsers /></span>
+          </div>
+          <span className="metric-card-value">{loading ? '—' : rekap.length}</span>
+          <span className="metric-card-sub">Staff terdaftar di {divisi}</span>
+        </div>
+
+        <div className="card metric-card metric-card-green dash-span-4">
+          <div className="metric-card-head">
+            <span className="metric-card-label">Rata-rata Skor Terakhir</span>
+            <span className="metric-card-icon"><IconTrophy /></span>
+          </div>
+          <span className="metric-card-value">{loading ? '—' : rataRataTerakhir.toFixed(1)}</span>
+          <span className="metric-card-sub">Gabungan seluruh staff</span>
+        </div>
+
+        <div className="card dash-span-4">
+          <div className="metric-card-head">
+            <h2 style={{ margin: 0 }}>Periode Terpantau</h2>
+            <span className="metric-card-icon" style={{ color: 'var(--orange-600)' }}><IconMonitor /></span>
+          </div>
+          <span className="metric-card-value" style={{ color: 'var(--text-main)' }}>
+            {loading ? '—' : trendLabels.length}
+          </span>
+          <span className="metric-card-sub" style={{ color: 'var(--grey-medium)' }}>Minggu penilaian tercatat</span>
+        </div>
+
+        <div className="card dash-span-8">
           <h2>Tren Skor Rata-rata Divisi</h2>
           {loading ? (
             <Spinner label="Memuat grafik tren..." />
@@ -112,16 +145,38 @@ export default function Monitoring() {
           )}
         </div>
 
-        <div className="card">
-          <h2>Rekap Staff ({rekap.length})</h2>
+        <div className="card dash-span-4">
+          <h2>Ranking Staff</h2>
           {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
           {loading ? (
             <>
               <div className="skeleton-row" /><div className="skeleton-row" /><div className="skeleton-row" />
             </>
           ) : rekap.length === 0 ? (
-            <p>Belum ada Staff terdaftar di divisi ini. Tambahkan lewat Kelola Karyawan (Master File HRD).</p>
+            <p>Belum ada Staff terdaftar di divisi ini.</p>
           ) : (
+            <div>
+              {rekap.slice(0, 6).map((r) => (
+                <div className="list-card-row" key={r.karyawan.id}>
+                  <span className="list-card-avatar" aria-hidden="true">
+                    {r.karyawan.namaLengkap.trim().charAt(0).toUpperCase() || '?'}
+                  </span>
+                  <div className="list-card-info">
+                    <div className="list-card-name">{r.karyawan.namaLengkap}</div>
+                    <div className="list-card-meta">{r.karyawan.jabatan} · {r.periode}</div>
+                  </div>
+                  <span className={`badge ${r.skorKedisiplinan >= 80 ? 'badge-good' : 'badge-bad'}`}>
+                    {r.skorTerakhir.toFixed(1)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {!loading && rekap.length > 0 && (
+          <div className="card dash-span-12">
+            <h2>Rekap Staff Lengkap ({rekap.length})</h2>
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
@@ -147,9 +202,9 @@ export default function Monitoring() {
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </div>
+    </AppShell>
   );
 }

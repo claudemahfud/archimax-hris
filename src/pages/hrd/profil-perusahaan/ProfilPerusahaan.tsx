@@ -4,17 +4,20 @@ import { ROUTES } from '../../../router/routePaths';
 import { useAksesGate } from '../../../shared/hooks/useAksesGate';
 import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useToast } from '../../../shared/hooks/useToast';
-import { PortalNav } from '../../../shared/components/PortalNav';
+import { AppShell } from '../../../shared/components/AppShell';
 import { Spinner } from '../../../shared/components/Loading';
 import { getCompanyInfo, setCompanyInfo } from '../../../shared/lib/firestore';
 import type { CompanyInfo } from '../../../shared/types';
+import {
+  IconHome, IconUsers, IconClipboardList, IconUploadCloud, IconBuilding, IconCompass, IconTrophy,
+} from '../../../shared/components/Icons';
 
 const NAV_ITEMS = [
-  { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik' },
-  { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan' },
-  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM' },
-  { to: ROUTES.HRD_IMPORT, label: 'Import Excel' },
-  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan' },
+  { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik', icon: <IconHome /> },
+  { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan', icon: <IconUsers /> },
+  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM', icon: <IconClipboardList /> },
+  { to: ROUTES.HRD_IMPORT, label: 'Import Excel', icon: <IconUploadCloud /> },
+  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan', icon: <IconBuilding /> },
 ];
 
 // Draft awal diambil dari konten Kebijakan Reward & Peraturan Punishment yang sudah ada di
@@ -95,10 +98,8 @@ export default function ProfilPerusahaan() {
   if (!terverifikasi) return <Navigate to={ROUTES.HRD_AKSES} replace />;
 
   return (
-    <div>
-      <PortalNav title="Master File HRD" items={NAV_ITEMS} onKeluar={keluar} />
-      <div className="page">
-        <h1>Profil Perusahaan</h1>
+    <AppShell portalTitle="Master File HRD" pageTitle="Profil Perusahaan" items={NAV_ITEMS} onKeluar={keluar}>
+        <h1 className="kpi-section-title"><IconBuilding /> Profil Perusahaan</h1>
         <p>
           Konten di sini <strong>sama untuk semua karyawan</strong> dan tampil sebagai halaman umum di Rapor
           Online masing-masing — jadi cukup diisi/diedit sekali di sini, tidak perlu ditulis ulang di file
@@ -107,43 +108,62 @@ export default function ProfilPerusahaan() {
         {loading || !form ? (
           <Spinner label="Memuat profil perusahaan..." />
         ) : (
-          <form className="card" onSubmit={handleSubmit}>
-            <div className="form-grid">
-              <div className="form-field span-12">
-                <label htmlFor="namaPerusahaan">Nama Perusahaan</label>
-                <input id="namaPerusahaan" value={form.namaPerusahaan} onChange={(e) => updateField('namaPerusahaan', e.target.value)} required />
-              </div>
-              <div className="form-field span-12">
-                <label htmlFor="alamat">Alamat</label>
-                <input id="alamat" value={form.alamat} onChange={(e) => updateField('alamat', e.target.value)} />
-              </div>
-              <div className="form-field span-12">
-                <label htmlFor="kontak">Kontak</label>
-                <input id="kontak" value={form.kontak} onChange={(e) => updateField('kontak', e.target.value)} />
-              </div>
-              <div className="form-field span-12">
-                <label htmlFor="visiMisi">Visi &amp; Misi</label>
-                <textarea
-                  id="visiMisi"
-                  style={{ minHeight: 140 }}
-                  placeholder="Belum diisi di spreadsheet lama — tulis Visi & Misi perusahaan di sini."
-                  value={form.visiMisi}
-                  onChange={(e) => updateField('visiMisi', e.target.value)}
-                />
-              </div>
-              <div className="form-field span-12">
-                <label htmlFor="tataTertib">Tata Tertib &amp; Peraturan (Punishment)</label>
-                <textarea id="tataTertib" style={{ minHeight: 260 }} value={form.tataTertib} onChange={(e) => updateField('tataTertib', e.target.value)} />
-              </div>
-              <div className="form-field span-12">
-                <label htmlFor="kebijakanReward">Kebijakan Reward</label>
-                <textarea id="kebijakanReward" style={{ minHeight: 220 }} value={form.kebijakanReward} onChange={(e) => updateField('kebijakanReward', e.target.value)} />
+          <form onSubmit={handleSubmit}>
+            <div className="card">
+              <h3 className="kpi-section-title"><IconBuilding /> Info Umum</h3>
+              <div className="form-grid">
+                <div className="form-field span-12">
+                  <label htmlFor="namaPerusahaan">Nama Perusahaan</label>
+                  <input id="namaPerusahaan" value={form.namaPerusahaan} onChange={(e) => updateField('namaPerusahaan', e.target.value)} required />
+                </div>
+                <div className="form-field span-12">
+                  <label htmlFor="alamat">Alamat</label>
+                  <input id="alamat" value={form.alamat} onChange={(e) => updateField('alamat', e.target.value)} />
+                </div>
+                <div className="form-field span-12">
+                  <label htmlFor="kontak">Kontak</label>
+                  <input id="kontak" value={form.kontak} onChange={(e) => updateField('kontak', e.target.value)} />
+                </div>
               </div>
             </div>
+
+            <div className="card">
+              <h3 className="kpi-section-title"><IconCompass /> Visi &amp; Misi</h3>
+              <div className="form-grid">
+                <div className="form-field span-12">
+                  <textarea
+                    id="visiMisi"
+                    aria-label="Visi & Misi"
+                    style={{ minHeight: 140 }}
+                    placeholder="Belum diisi di spreadsheet lama — tulis Visi & Misi perusahaan di sini."
+                    value={form.visiMisi}
+                    onChange={(e) => updateField('visiMisi', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <h3 className="kpi-section-title"><IconClipboardList /> Tata Tertib &amp; Peraturan (Punishment)</h3>
+              <div className="form-grid">
+                <div className="form-field span-12">
+                  <textarea id="tataTertib" aria-label="Tata Tertib & Peraturan" style={{ minHeight: 260 }} value={form.tataTertib} onChange={(e) => updateField('tataTertib', e.target.value)} />
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <h3 className="kpi-section-title"><IconTrophy /> Kebijakan Reward</h3>
+              <div className="form-grid">
+                <div className="form-field span-12">
+                  <textarea id="kebijakanReward" aria-label="Kebijakan Reward" style={{ minHeight: 220 }} value={form.kebijakanReward} onChange={(e) => updateField('kebijakanReward', e.target.value)} />
+                </div>
+              </div>
+            </div>
+
             <button type="submit" className="btn" disabled={saving}>{saving ? 'Menyimpan...' : 'Simpan Profil Perusahaan'}</button>
           </form>
         )}
-      </div>
-    </div>
+    </AppShell>
   );
 }

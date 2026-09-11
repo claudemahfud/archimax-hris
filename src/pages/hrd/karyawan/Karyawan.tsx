@@ -4,7 +4,7 @@ import { ROUTES } from '../../../router/routePaths';
 import { useAksesGate } from '../../../shared/hooks/useAksesGate';
 import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useToast } from '../../../shared/hooks/useToast';
-import { PortalNav } from '../../../shared/components/PortalNav';
+import { AppShell } from '../../../shared/components/AppShell';
 import { Spinner } from '../../../shared/components/Loading';
 import { listKaryawan, tambahKaryawan, editKaryawan, hapusKaryawan, kodeAksesRaporDefault, cariKaryawanByNip, cariSemuaKaryawanByNip } from '../../../shared/lib/firestore';
 import { uploadGambarKeCloudinary } from '../../../shared/lib/cloudinary';
@@ -12,13 +12,16 @@ import { parseKaryawanExcel } from '../../../shared/lib/excelImport';
 import { DAFTAR_DIVISI } from '../../../shared/constants/kpi';
 import { DAFTAR_BRAND } from '../../../shared/constants/brand';
 import type { Karyawan as KaryawanType } from '../../../shared/types';
+import {
+  IconHome, IconUsers, IconClipboardList, IconUploadCloud, IconBuilding,
+} from '../../../shared/components/Icons';
 
 const NAV_ITEMS = [
-  { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik' },
-  { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan' },
-  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM' },
-  { to: ROUTES.HRD_IMPORT, label: 'Import Excel' },
-  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan' },
+  { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik', icon: <IconHome /> },
+  { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan', icon: <IconUsers /> },
+  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM', icon: <IconClipboardList /> },
+  { to: ROUTES.HRD_IMPORT, label: 'Import Excel', icon: <IconUploadCloud /> },
+  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan', icon: <IconBuilding /> },
 ];
 
 type FormState = Omit<KaryawanType, 'id' | 'createdAt' | 'updatedAt'>;
@@ -226,9 +229,7 @@ export default function Karyawan() {
   if (!terverifikasi) return <Navigate to={ROUTES.HRD_AKSES} replace />;
 
   return (
-    <div>
-      <PortalNav title="Master File HRD" items={NAV_ITEMS} onKeluar={keluar} />
-      <div className="page">
+    <AppShell portalTitle="Master File HRD" pageTitle="Kelola Data Karyawan" items={NAV_ITEMS} onKeluar={keluar}>
         <h1>Kelola Data Karyawan</h1>
 
         {!formTerbuka && (
@@ -519,8 +520,7 @@ export default function Karyawan() {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 

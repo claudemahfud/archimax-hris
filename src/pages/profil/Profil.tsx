@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { ROUTES } from '../../router/routePaths';
-import { LOGO_ARCHIMAX_URL } from '../../shared/constants/branding';
 import { useAksesSuperadmin } from '../../shared/hooks/useAksesSuperadmin';
 import { useAksesGate } from '../../shared/hooks/useAksesGate';
 import { useAksesHod } from '../../shared/hooks/useAksesHod';
+import { useAksesBranchManager } from '../../shared/hooks/useAksesBranchManager';
 import { useToast } from '../../shared/hooks/useToast';
 import { bacaSesiAkun } from '../../shared/lib/akunSession';
 import { kirimMagicLinkResetPassword } from '../../shared/lib/firestore';
 import { Spinner } from '../../shared/components/Loading';
-import { PortalNav } from '../../shared/components/PortalNav';
+import { AppShell } from '../../shared/components/AppShell';
 
 // Halaman "Kelola Akun Sendiri" — dibuka dari tombol "Profil Saya" di kartu Welcome Page
-// (Superadmin/HRD/HOD, lihat Landing.tsx). Info Username/Email hanya tersedia untuk akun yang
+// (Superadmin/HRD/HOD/Branch Manager, lihat Landing.tsx). Info Username/Email hanya tersedia untuk akun yang
 // login lewat Username+Password atau Google yang cocok dengan Akun Portal (lihat
 // shared/lib/akunSession.ts) — akses lewat Kode Akses (PIN) murni tidak punya akun personal.
 
@@ -21,14 +21,19 @@ export default function Profil() {
   const { terverifikasi: isSuperadmin, keluar: keluarSuperadmin } = useAksesSuperadmin();
   const { terverifikasi: isHrd, keluar: keluarHrd } = useAksesGate('akses_hrd');
   const { terverifikasi: isHod, divisi: divisiHod, keluar: keluarHod } = useAksesHod();
+  const { terverifikasi: isBm, divisi: divisiBm, keluar: keluarBm } = useAksesBranchManager();
 
   const [loadingGantiPassword, setLoadingGantiPassword] = useState(false);
 
-  if (!isSuperadmin && !isHrd && !isHod) return <Navigate to={ROUTES.LANDING} replace />;
+  if (!isSuperadmin && !isHrd && !isHod && !isBm) return <Navigate to={ROUTES.LANDING} replace />;
 
   const sesiAkun = bacaSesiAkun();
-  const role = isSuperadmin ? 'Superadmin' : isHod ? `HOD${divisiHod ? ` · ${divisiHod}` : ''}` : 'HRD';
-  const keluar = isSuperadmin ? keluarSuperadmin : isHod ? keluarHod : keluarHrd;
+  const role = isSuperadmin
+    ? 'Superadmin'
+    : isHod ? `HOD${divisiHod ? ` · ${divisiHod}` : ''}`
+    : isBm ? `Branch Manager${divisiBm ? ` · ${divisiBm}` : ''}`
+    : 'HRD';
+  const keluar = isSuperadmin ? keluarSuperadmin : isHod ? keluarHod : isBm ? keluarBm : keluarHrd;
 
   async function handleGantiPassword() {
     if (!sesiAkun) return;
@@ -44,17 +49,21 @@ export default function Profil() {
   }
 
   return (
-    <div>
-      <PortalNav title="Archimax HRIS" items={[]} onKeluar={keluar} />
-      <div className="page">
+    <AppShell portalTitle="Archimax HRIS" pageTitle="Profil Saya" items={[]} onKeluar={keluar}>
         <div className="card" style={{ maxWidth: 480, margin: '32px auto' }}>
           <div style={{ textAlign: 'center' }}>
-            <img
-              src={LOGO_ARCHIMAX_URL}
-              alt="Logo PT Archimax Architect Indonesia"
-              style={{ width: '100%', maxWidth: 100, height: 'auto', objectFit: 'contain', display: 'block', margin: '0 auto 12px' }}
-            />
-            <h1>Profil Saya</h1>
+            <span
+              aria-hidden="true"
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 72, height: 72, borderRadius: '50%', margin: '0 auto 12px',
+                background: 'var(--gradient-brand)', color: 'var(--white)', fontSize: '1.8rem', fontWeight: 800,
+              }}
+            >
+              {(sesiAkun?.username || role).trim().charAt(0).toUpperCase()}
+            </span>
+            <h1 style={{ marginBottom: 4 }}>Profil Saya</h1>
+            <span className="kpi-summary-chip kpi-summary-amber" style={{ marginBottom: 8 }}>{role}</span>
             <p>Kelola informasi akun Anda sendiri.</p>
           </div>
 
@@ -63,7 +72,6 @@ export default function Profil() {
               <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <InfoBaris label="Username" value={sesiAkun.username} />
                 <InfoBaris label="Email" value={sesiAkun.email} />
-                <InfoBaris label="Role" value={role} />
               </div>
 
               <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--grey-light, #e5e5e5)' }}>
@@ -84,8 +92,7 @@ export default function Profil() {
             </>
           ) : (
             <div style={{ marginTop: 16 }}>
-              <InfoBaris label="Role" value={role} />
-              <p style={{ marginTop: 16 }}>
+              <p style={{ marginTop: 0 }}>
                 Anda masuk lewat Kode Akses (PIN){isSuperadmin ? ' / login Superadmin manual' : ''},
                 bukan Akun Portal (Username + Password + Email). Belum ada password pribadi yang
                 bisa diganti lewat halaman ini.
@@ -104,8 +111,7 @@ export default function Profil() {
             </Link>
           </div>
         </div>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 

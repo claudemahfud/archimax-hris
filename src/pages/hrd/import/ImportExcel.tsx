@@ -4,18 +4,21 @@ import { ROUTES } from '../../../router/routePaths';
 import { useAksesGate } from '../../../shared/hooks/useAksesGate';
 import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useToast } from '../../../shared/hooks/useToast';
-import { PortalNav } from '../../../shared/components/PortalNav';
+import { AppShell } from '../../../shared/components/AppShell';
 import { Spinner } from '../../../shared/components/Loading';
 import { parseKaryawanExcel } from '../../../shared/lib/excelImport';
 import { importSatuKaryawan, kodeAksesRaporDefault } from '../../../shared/lib/firestore';
 import type { HasilImportExcel } from '../../../shared/types';
+import {
+  IconHome, IconUsers, IconClipboardList, IconUploadCloud, IconBuilding,
+} from '../../../shared/components/Icons';
 
 const NAV_ITEMS = [
-  { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik' },
-  { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan' },
-  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM' },
-  { to: ROUTES.HRD_IMPORT, label: 'Import Excel' },
-  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan' },
+  { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik', icon: <IconHome /> },
+  { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan', icon: <IconUsers /> },
+  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM', icon: <IconClipboardList /> },
+  { to: ROUTES.HRD_IMPORT, label: 'Import Excel', icon: <IconUploadCloud /> },
+  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan', icon: <IconBuilding /> },
 ];
 
 type BarisImport = {
@@ -97,12 +100,12 @@ export default function ImportExcel() {
   if (!terverifikasi) return <Navigate to={ROUTES.HRD_AKSES} replace />;
 
   const jumlahSiapDisimpan = baris.filter((b) => b.status === 'terbaca').length;
+  const jumlahTersimpan = baris.filter((b) => b.status === 'tersimpan').length;
+  const jumlahGagal = baris.filter((b) => b.status === 'gagal-baca' || b.status === 'gagal-simpan').length;
 
   return (
-    <div>
-      <PortalNav title="Master File HRD" items={NAV_ITEMS} onKeluar={keluar} />
-      <div className="page">
-        <h1>Import Excel Karyawan</h1>
+    <AppShell portalTitle="Master File HRD" pageTitle="Import Excel Karyawan" items={NAV_ITEMS} onKeluar={keluar}>
+        <h1 className="kpi-section-title"><IconUploadCloud /> Import Excel Karyawan</h1>
         <div className="card">
           <p>
             Upload file Excel karyawan (format sheet <strong>Data Diri Karyawan</strong> + <strong>RAPORT-KPI</strong>,
@@ -114,13 +117,18 @@ export default function ImportExcel() {
             (bukan dobel), dan riwayat KPI per periode minggu yang sudah pernah masuk otomatis dilewati — jadi
             file yang sama aman diupload ulang kalau perlu.
           </p>
-          <input type="file" accept=".xlsx,.xls" multiple onChange={handlePilihFile} disabled={membaca} />
+          <label className="upload-dropzone" htmlFor="fileExcelInput">
+            <IconUploadCloud />
+            <span className="upload-dropzone-title">Klik untuk pilih file Excel</span>
+            <span className="upload-dropzone-sub">.xlsx / .xls — bisa pilih banyak file sekaligus</span>
+            <input id="fileExcelInput" type="file" accept=".xlsx,.xls" multiple onChange={handlePilihFile} disabled={membaca} style={{ display: 'none' }} />
+          </label>
         </div>
 
         {baris.length > 0 && (
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-              <h2>Pratinjau ({baris.length} file)</h2>
+              <h2 style={{ margin: 0 }}>Pratinjau ({baris.length} file)</h2>
               <button
                 type="button"
                 className="btn"
@@ -129,6 +137,14 @@ export default function ImportExcel() {
               >
                 {menyimpanSemua ? 'Menyimpan...' : `Import Semua yang Siap (${jumlahSiapDisimpan})`}
               </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '12px 0 4px' }}>
+              <span className="kpi-summary-chip kpi-summary-amber"><span>Siap Diimpor</span><strong>{jumlahSiapDisimpan}</strong></span>
+              <span className="kpi-summary-chip kpi-summary-green"><span>Tersimpan</span><strong>{jumlahTersimpan}</strong></span>
+              {jumlahGagal > 0 && (
+                <span className="kpi-summary-chip kpi-summary-red"><span>Gagal</span><strong>{jumlahGagal}</strong></span>
+              )}
             </div>
 
             <div className="table-scroll">
@@ -199,7 +215,6 @@ export default function ImportExcel() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </AppShell>
   );
 }

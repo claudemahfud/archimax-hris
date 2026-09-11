@@ -16,9 +16,14 @@ const KARYAWAN_COL = 'karyawan';
 
 export async function listKaryawan(divisi?: string): Promise<Karyawan[]> {
   const col = collection(db, KARYAWAN_COL);
-  const q = divisi ? query(col, where('divisi', '==', divisi)) : query(col, orderBy('namaLengkap'));
+  const q = divisi ? query(col, where('divisi', '==', divisi)) : query(col);
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) }));
+  const hasil = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) }));
+  // Sort di client (bukan orderBy di query) supaya query where('divisi', ...) + urut nama tidak
+  // butuh composite index Firestore tambahan — dan urutannya tetap konsisten (alfabetis) baik
+  // dipanggil dengan atau tanpa filter divisi (dipakai HRD/Kelola Karyawan maupun HOD/Branch
+  // Manager/Monitoring & Penilaian).
+  return hasil.sort((a, b) => a.namaLengkap.localeCompare(b.namaLengkap));
 }
 
 // Dinilai lewat Master File HRD: HOD, Branch Manager, dan EKSEKUTIF (ketiganya level "atas",

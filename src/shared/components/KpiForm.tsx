@@ -3,6 +3,7 @@ import { useToast } from '../hooks/useToast';
 import { simpanPenilaianKpi, listRiwayatKpi } from '../lib/firestore';
 import { getAspekHardSkill, hitungSkorKedisiplinan, hitungTotalSkorHardSkill } from '../constants/kpi';
 import type { Karyawan, PenilaianKpiForm } from '../types';
+import { IconTrophy, IconClipboardList, IconUserCircle } from './Icons';
 
 interface Props {
   targets: Karyawan[];
@@ -111,7 +112,7 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
 
   return (
     <form className="card" onSubmit={handleSubmit}>
-      <h2>Form Penilaian KPI</h2>
+      <h2 className="kpi-section-title"><IconUserCircle /> Form Penilaian KPI</h2>
 
       <div className="form-grid">
         <div className="form-field">
@@ -125,12 +126,34 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
           <label htmlFor="periodeMinggu">Periode Minggu</label>
           <input id="periodeMinggu" type="text" placeholder="mis. Minggu 2 - Sep 2026" value={periodeMinggu}
             onChange={(e) => setPeriodeMinggu(e.target.value)} required />
+          {target && periodeMinggu.trim() && periodeTerpakai.has(periodeMinggu.trim().toLowerCase()) && (
+            <span className="kpi-summary-chip kpi-summary-red" style={{ alignSelf: 'flex-start' }}>
+              Periode ini sudah pernah dinilai
+            </span>
+          )}
         </div>
       </div>
 
       {target && (
+        <div className="list-card-row" style={{ marginBottom: 6 }}>
+          <span className="list-card-avatar" aria-hidden="true">
+            {target.namaLengkap.trim().charAt(0).toUpperCase() || '?'}
+          </span>
+          <div className="list-card-info">
+            <div className="list-card-name">{target.namaLengkap}</div>
+            <div className="list-card-meta">{target.divisi} · {target.jabatan}</div>
+          </div>
+        </div>
+      )}
+
+      {target && (
         <>
-          <h3>Penilaian Hard Skill (skala 0–100)</h3>
+          <div className="kpi-section-head">
+            <h3 className="kpi-section-title"><IconTrophy /> Penilaian Hard Skill (skala 0–100)</h3>
+            <span className="kpi-summary-chip kpi-summary-amber">
+              <span>Total Skor</span><strong>{totalSkor.toFixed(2)}</strong>
+            </span>
+          </div>
           <div className="form-grid">
             {aspekLabel.map((label, i) => (
               <div className="form-field" key={label + i}>
@@ -146,9 +169,13 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
               </div>
             ))}
           </div>
-          <p><strong>Total Skor Hard Skill (rata-rata):</strong> {totalSkor.toFixed(2)}</p>
 
-          <h3>Soft Skills / Kedisiplinan &amp; SOP</h3>
+          <div className="kpi-section-head">
+            <h3 className="kpi-section-title"><IconClipboardList /> Soft Skills / Kedisiplinan &amp; SOP</h3>
+            <span className={`kpi-summary-chip ${skorKedisiplinan >= 80 ? 'kpi-summary-green' : 'kpi-summary-red'}`}>
+              <span>Skor Akhir</span><strong>{skorKedisiplinan.toFixed(2)}</strong>
+            </span>
+          </div>
           <div className="form-grid">
             {SOFT_SKILL_FIELDS.map((f) => (
               <div className="form-field" key={f.key}>
@@ -162,16 +189,13 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
               </div>
             ))}
           </div>
-          <p><strong>Skor Kedisiplinan / SOP Akhir:</strong>{' '}
-            <span className={`badge ${skorKedisiplinan >= 80 ? 'badge-good' : 'badge-bad'}`}>{skorKedisiplinan.toFixed(2)}</span>
-          </p>
           <div className="form-field">
             <label htmlFor="keteranganCustom">Keterangan Custom Poin</label>
             <input id="keteranganCustom" type="text" value={catatan.keteranganCustom}
               onChange={(e) => setCatatan((p) => ({ ...p, keteranganCustom: e.target.value }))} />
           </div>
 
-          <h3>Catatan &amp; Rekomendasi Atasan</h3>
+          <h3 className="kpi-section-title"><IconUserCircle /> Catatan &amp; Rekomendasi Atasan</h3>
           <div className="form-grid">
             <TextArea label="Kelebihan" value={catatan.kelebihan} onChange={(v) => setCatatan((p) => ({ ...p, kelebihan: v }))} />
             <TextArea label="Kekurangan" value={catatan.kekurangan} onChange={(v) => setCatatan((p) => ({ ...p, kekurangan: v }))} />

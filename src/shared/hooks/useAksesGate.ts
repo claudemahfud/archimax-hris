@@ -1,4 +1,6 @@
 import { useCallback, useState } from 'react';
+import { signOut } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import { hapusSesiAkun } from '../lib/akunSession';
 
 // Catatan keamanan: pengecekan PIN di sini berjalan di client (parity dengan alur PIN GAS lama
@@ -21,6 +23,11 @@ export function useAksesGate(storageKey: string) {
     sessionStorage.removeItem(storageKey);
     hapusSesiAkun();
     setTerverifikasi(false);
+    // Akun HRD bisa login lewat Firebase Auth sungguhan (Username+Password atau Google via
+    // Landing.tsx) — kalau tidak ikut sign-out di sini, sesi Firebase Auth-nya tertinggal aktif
+    // di device walau sudah klik "Keluar" (baru ke-signOut kalau auto-logout idle 60 menit
+    // sempat kepicu, lihat useAutoLogout.ts). Disamakan supaya "Keluar" manual selalu bersih.
+    if (auth.currentUser) signOut(auth).catch(() => undefined);
   }, [storageKey]);
 
   return { terverifikasi, verifikasi, keluar };

@@ -1,4 +1,6 @@
 import { useCallback, useState } from 'react';
+import { signOut } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import { hapusSesiAkun } from '../lib/akunSession';
 
 export function useAksesBranchManager() {
@@ -9,6 +11,9 @@ export function useAksesBranchManager() {
     sessionStorage.removeItem('akses_branch_manager');
     sessionStorage.removeItem('akses_branch_manager_divisi');
     hapusSesiAkun();
+    // Sama seperti useAksesHod.ts — akun Branch Manager juga bisa login lewat Firebase Auth
+    // sungguhan, jadi ikut sign-out supaya tidak ada sesi tertinggal aktif di device.
+    if (auth.currentUser) signOut(auth).catch(() => undefined);
     window.location.reload();
   }, []);
 
