@@ -60,9 +60,10 @@ export async function hapusKaryawan(id: string): Promise<void> {
 }
 
 export async function cariKaryawanByNip(nip: string): Promise<Karyawan | null> {
-  if (!nip) return null;
+  const nipTrimmed = nip.trim();
+  if (!nipTrimmed) return null;
   const col = collection(db, KARYAWAN_COL);
-  const snap = await getDocs(query(col, where('nip', '==', nip)));
+  const snap = await getDocs(query(col, where('nip', '==', nipTrimmed)));
   if (snap.empty) return null;
   const d = snap.docs[0];
   return { id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) };
@@ -76,9 +77,10 @@ export async function cariKaryawanByNip(nip: string): Promise<Karyawan | null> {
 // mengembalikan salinan lain duluan. Dengan daftar lengkap ini, pemanggil bisa exclude id yang
 // sedang diedit dan baru anggap bentrok kalau MASIH ada sisa dokumen lain dengan NIP sama.
 export async function cariSemuaKaryawanByNip(nip: string): Promise<Karyawan[]> {
-  if (!nip) return [];
+  const nipTrimmed = nip.trim();
+  if (!nipTrimmed) return [];
   const col = collection(db, KARYAWAN_COL);
-  const snap = await getDocs(query(col, where('nip', '==', nip)));
+  const snap = await getDocs(query(col, where('nip', '==', nipTrimmed)));
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Karyawan, 'id'>) }));
 }
 

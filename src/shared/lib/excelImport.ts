@@ -88,20 +88,31 @@ function ambilDariHeaderRow(grid: Grid, aliases: string[]): string | number | nu
 /** Cari nilai dari blok "Label : Nilai" (scan semua baris, cari sel ':' lalu ambil sel sesudahnya). */
 function ambilDariBlokLabel(grid: Grid, aliases: string[]): string | null {
   const aliasNorm = aliases.map(normalisasiLabel);
-  for (const row of grid) {
-    const idxTitikDua = row.findIndex((c) => String(c ?? '').trim() === ':');
-    if (idxTitikDua < 1) continue;
-    const label = normalisasiLabel(row[idxTitikDua - 1]);
-    if (!aliasNorm.some((a) => label === a || label.startsWith(a))) continue;
-    for (let j = idxTitikDua + 1; j < row.length; j++) {
-      const v = row[j];
-      if (v !== null && v !== undefined && String(v).trim() !== '') {
-        return formatTanggal(v);
+
+  function cariBaris(cocok: (label: string) => boolean): string | null {
+    for (const row of grid) {
+      const idxTitikDua = row.findIndex((c) => String(c ?? '').trim() === ':');
+      if (idxTitikDua < 1) continue;
+      const label = normalisasiLabel(row[idxTitikDua - 1]);
+      if (!cocok(label)) continue;
+      for (let j = idxTitikDua + 1; j < row.length; j++) {
+        const v = row[j];
+        if (v !== null && v !== undefined && String(v).trim() !== '') {
+          return formatTanggal(v);
+        }
       }
+      return null;
     }
     return null;
   }
-  return null;
+
+  // Dua tahap: cocok PERSIS dulu (mis. alias "Alamat" ketemu baris berlabel persis "Alamat"),
+  // baru fallback ke startsWith (mis. alias "Tempat Lahir" ketemu baris "Tempat/Tgl Lahir").
+  // Tanpa urutan ini, alias pendek seperti "Alamat" bisa salah kepentok baris "Alamat Kantor"
+  // yang letaknya lebih dulu di sheet padahal artinya beda (alamat kantor ≠ alamat KTP pribadi).
+  const eksak = cariBaris((label) => aliasNorm.some((a) => label === a));
+  if (eksak !== null) return eksak;
+  return cariBaris((label) => aliasNorm.some((a) => label.startsWith(a)));
 }
 
 function ambilField(
@@ -180,7 +191,9 @@ export async function parseKaryawanExcel(file: File): Promise<HasilImportExcel> 
     tempatLahir,
     tanggalLahir,
     jenisKelamin: ambilField(grid, ['Jenis Kelamin'], ['Jenis Kelamin'], peringatan, 'Jenis Kelamin'),
-    alamatKtp: ambilField(grid, ['Alamat KTP'], ['Alamat KTP'], peringatan, 'Alamat KTP'),
+    // Di file lama, "Alamat" (bukan "Alamat KTP") di blok Data Diri adalah alamat sesuai KTP
+    // — beda dari "Alamat Kantor" (alamat perusahaan, bukan data karyawan, sengaja tidak dipetakan).
+    alamatKtp: ambilField(grid, ['Alamat KTP'], ['Alamat KTP', 'Alamat'], peringatan, 'Alamat KTP'),
     alamatDomisili: ambilField(grid, ['Alamat Domisili'], ['Alamat Domisili'], peringatan, 'Alamat Domisili'),
     agama: ambilField(grid, ['Agama'], ['Agama'], peringatan, 'Agama'),
     statusPerkawinan: ambilField(grid, ['Status Perkawinan'], ['Status Perkawinan'], peringatan, 'Status Perkawinan'),
