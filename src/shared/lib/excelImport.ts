@@ -19,6 +19,7 @@
 
 import * as XLSX from 'xlsx';
 import { DAFTAR_BRAND } from '../constants/brand';
+import { DIVISI_BUTUH_KONFIRMASI } from '../constants/kpi';
 import type { Karyawan, HasilImportExcel, PenilaianKpiForm } from '../types';
 
 type Grid = (string | number | Date | null)[][];
@@ -131,13 +132,17 @@ export async function parseKaryawanExcel(file: File): Promise<HasilImportExcel> 
   const levelUserRaw = (ambilDariHeaderRow(grid, HEADER_LEVEL_USER) as string) || 'Staff';
   const brandRaw = (ambilDariHeaderRow(grid, HEADER_BRAND) as string) || '';
   if (!brandRaw) peringatan.push('"Brand" tidak ditemukan di file, dikosongkan ke default Archimax — mohon cek manual.');
+  const divisiDitemukan = ambilField(grid, ['Divisi'], ['Divisi'], peringatan, 'Divisi', false);
+  if (!divisiDitemukan) {
+    peringatan.push(`"Divisi" tidak ditemukan di file, diisi sementara dengan "${DIVISI_BUTUH_KONFIRMASI}" — mohon pilih divisi yang benar secara manual sebelum disimpan.`);
+  }
 
   const karyawan: Omit<Karyawan, 'id' | 'createdAt' | 'updatedAt'> = {
     nip,
     namaLengkap,
     namaPanggilan: ambilField(grid, ['Nama Panggilan'], ['Nama Panggilan'], peringatan, 'Nama Panggilan'),
     jabatan: ambilField(grid, ['Jabatan'], ['Jabatan'], peringatan, 'Jabatan', true),
-    divisi: ambilField(grid, ['Divisi'], ['Divisi'], peringatan, 'Divisi', true),
+    divisi: divisiDitemukan || DIVISI_BUTUH_KONFIRMASI,
     brand: (DAFTAR_BRAND as readonly string[]).includes(brandRaw) ? brandRaw : DAFTAR_BRAND[0],
     bergabungSejak: ambilField(grid, ['Bergabung Sejak'], ['Bergabung Sejak'], peringatan, 'Bergabung Sejak'),
     pengalamanKerja: ambilField(grid, ['Pengalaman Kerja'], ['Pengalaman Kerja'], peringatan, 'Pengalaman Kerja'),

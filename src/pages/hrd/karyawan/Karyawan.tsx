@@ -6,7 +6,7 @@ import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useToast } from '../../../shared/hooks/useToast';
 import { PortalNav } from '../../../shared/components/PortalNav';
 import { Spinner } from '../../../shared/components/Loading';
-import { listKaryawan, tambahKaryawan, editKaryawan, hapusKaryawan, kodeAksesRaporDefault } from '../../../shared/lib/firestore';
+import { listKaryawan, tambahKaryawan, editKaryawan, hapusKaryawan, kodeAksesRaporDefault, cariKaryawanByNip } from '../../../shared/lib/firestore';
 import { uploadGambarKeCloudinary } from '../../../shared/lib/cloudinary';
 import { parseKaryawanExcel } from '../../../shared/lib/excelImport';
 import { DAFTAR_DIVISI } from '../../../shared/constants/kpi';
@@ -152,9 +152,26 @@ export default function Karyawan() {
     setSaving(true);
     try {
       if (editId) {
+        // Cek NIP dobel juga saat edit (kalau NIP diubah ke NIP milik karyawan lain).
+        if (form.nip) {
+          const bentrok = await cariKaryawanByNip(form.nip);
+          if (bentrok && bentrok.id !== editId) {
+            showToast('error', `NIP "${form.nip}" sudah dipakai oleh ${bentrok.namaLengkap}. Gunakan NIP lain.`);
+            setSaving(false);
+            return;
+          }
+        }
         await editKaryawan(editId, form);
         showToast('success', `Data ${form.namaLengkap} berhasil diperbarui.`);
       } else {
+        if (form.nip) {
+          const bentrok = await cariKaryawanByNip(form.nip);
+          if (bentrok) {
+            showToast('error', `NIP "${form.nip}" sudah terdaftar atas nama ${bentrok.namaLengkap}. Gunakan NIP lain atau edit data yang sudah ada.`);
+            setSaving(false);
+            return;
+          }
+        }
         const id = await tambahKaryawan(form);
         const url = `${window.location.origin}${ROUTES.raporUrl(id)}`;
         const pin = form.kodeAksesRapor || kodeAksesRaporDefault(form);
@@ -296,7 +313,8 @@ export default function Karyawan() {
             <Field label="Jabatan" value={form.jabatan} onChange={(v) => updateField('jabatan', v)} required span={5} />
             <div className="form-field span-4">
               <label htmlFor="divisi">Divisi</label>
-              <select id="divisi" value={form.divisi} onChange={(e) => updateField('divisi', e.target.value)} required>
+              <select id="divisi" value={form.divisi} onChange={(e) => updateField('divisi', e.target.value)}>
+                <option value="">- Belum diisi -</option>
                 {DAFTAR_DIVISI.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
@@ -427,7 +445,7 @@ export default function Karyawan() {
                         </div>
                       </td>
                       <td>{k.jabatan}</td>
-                      <td>{k.divisi}</td>
+                      <td>{k.divisi || '-'}</td>
                       <td>{k.brand || '-'}</td>
                       <td style={{ maxWidth: 220, whiteSpace: 'normal', fontSize: '0.85rem', color: 'var(--grey-medium)' }}>
                         {k.catatan || '-'}

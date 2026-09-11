@@ -1,6 +1,6 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useToast } from '../hooks/useToast';
-import { simpanPenilaianKpi } from '../lib/firestore';
+import { simpanPenilaianKpi, listRiwayatKpi } from '../lib/firestore';
 import { getAspekHardSkill, hitungSkorKedisiplinan, hitungTotalSkorHardSkill } from '../constants/kpi';
 import type { Karyawan, PenilaianKpiForm } from '../types';
 
@@ -53,8 +53,20 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
   const [soft, setSoft] = useState<SoftSkillState>(SOFT_SKILL_KOSONG);
   const [catatan, setCatatan] = useState(CATATAN_KOSONG);
   const [saving, setSaving] = useState(false);
+  // Periode yang sudah pernah dinilai untuk karyawan yang dipilih — dipakai supaya HRD/HOD
+  // tidak tidak sengaja submit dobel untuk periode minggu yang sama (lihat handleSubmit).
+  const [periodeTerpakai, setPeriodeTerpakai] = useState<Set<string>>(new Set());
 
   const target = targets.find((t) => t.id === karyawanId) || null;
+
+  useEffect(() => {
+    let batal = false;
+    if (!target) { setPeriodeTerpakai(new Set()); return; }
+    listRiwayatKpi(target.id).then((riwayat) => {
+      if (!batal) setPeriodeTerpakai(new Set(riwayat.map((r) => r.periodeMinggu.trim().toLowerCase())));
+    }).catch(() => undefined);
+    return () => { batal = true; };
+  }, [target]);
   const aspekLabel = useMemo(() => (target ? getAspekHardSkill(target.divisi) : []), [target]);
   const totalSkor = useMemo(() => hitungTotalSkorHardSkill(aspekValues), [aspekValues]);
   const skorKedisiplinan = useMemo(() => hitungSkorKedisiplinan(soft), [soft]);
@@ -71,6 +83,10 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!target) { showToast('error', 'Pilih karyawan yang akan dinilai terlebih dahulu.'); return; }
+    if (periodeTerpakai.has(periodeMinggu.trim().toLowerCase())) {
+      showToast('error', `Periode "${periodeMinggu}" sudah pernah dinilai untuk ${target.namaLengkap}. Gunakan periode lain, atau hubungi HRD kalau perlu koreksi data.`);
+      return;
+    }
     setSaving(true);
     try {
       const form: PenilaianKpiForm = {

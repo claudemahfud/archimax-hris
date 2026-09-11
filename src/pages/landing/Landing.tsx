@@ -8,7 +8,7 @@ import { auth, googleProvider } from '../../shared/lib/firebase';
 import {
   getWhitelistSuperadmin, cariAkunPortalByEmail, daftarkanAkunPortal, hapusAkunPortal, listAkunPortal,
   loginAkunPortal, kirimMagicLinkResetPassword, ubahUsernameAkunPortal, resetEmailPasswordAkunPortal,
-  kodeAksesHodDefault,
+  kodeAksesHodDefault, SudahAdaEmailSamaError,
 } from '../../shared/lib/firestore';
 import { simpanSesiAkun } from '../../shared/lib/akunSession';
 import type { AkunPortal } from '../../shared/types';
@@ -284,7 +284,15 @@ export default function Landing() {
       showToast('success', 'Akun berhasil diperbarui.');
       tutupEditAkun();
     } catch (err) {
-      showToast('error', `Gagal memperbarui akun: ${err instanceof Error ? err.message : String(err)}`);
+      if (err instanceof SudahAdaEmailSamaError) {
+        // Bukan kegagalan sungguhan — Magic Link sudah terkirim, hanya password-nya tidak
+        // langsung diganti dari sini (lihat catatan di resetEmailPasswordAkunPortal).
+        showToast('success', err.message);
+        setDaftarAkun(await listAkunPortal());
+        tutupEditAkun();
+      } else {
+        showToast('error', `Gagal memperbarui akun: ${err instanceof Error ? err.message : String(err)}`);
+      }
     } finally {
       setLoadingEditAkun(false);
     }
@@ -476,7 +484,11 @@ export default function Landing() {
                           <p style={{ fontSize: '0.82rem', marginTop: -6, marginBottom: 10 }}>
                             Ganti Email hanya berlaku kalau Password baru juga diisi (Email &amp;
                             Password saling terikat — keduanya diganti bersamaan). Kosongkan
-                            Password kalau cuma mau mengubah Username.
+                            Password kalau cuma mau mengubah Username. Kalau Password diisi TAPI
+                            Email dibiarkan sama, sistem akan mengirim Magic Link Reset Password
+                            ke email tersebut (Firebase tidak mengizinkan mengganti password akun
+                            orang lain secara langsung) — pemilik akun mengatur password barunya
+                            sendiri lewat email itu.
                           </p>
                           <div className="form-field">
                             <label htmlFor={`editPassword-${akun.id}`}>Password Baru (opsional)</label>

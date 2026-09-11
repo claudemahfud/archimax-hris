@@ -1,6 +1,6 @@
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where,
-  orderBy, setDoc, serverTimestamp, Timestamp, writeBatch,
+  orderBy, setDoc, serverTimestamp, Timestamp, writeBatch, arrayUnion, arrayRemove,
 } from 'firebase/firestore';
 import {
   createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
@@ -188,17 +188,17 @@ export async function getWhitelistSuperadmin(): Promise<string[]> {
   return (data.emails || []).map((e) => e.toLowerCase().trim());
 }
 
+// Pakai arrayUnion/arrayRemove (operasi atomik di server), BUKAN baca-lalu-tulis manual —
+// supaya aman kalau ada 2 perubahan whitelist terjadi hampir bersamaan (race condition lama:
+// perubahan kedua bisa menimpa perubahan pertama kalau keduanya baca data sebelum saling tahu).
 export async function tambahWhitelistSuperadmin(email: string): Promise<void> {
   const bersih = email.toLowerCase().trim();
-  const daftar = await getWhitelistSuperadmin();
-  if (daftar.includes(bersih)) return;
-  await setDoc(doc(db, SETTINGS_COL, 'whitelistSuperadmin'), { emails: [...daftar, bersih] }, { merge: true });
+  await setDoc(doc(db, SETTINGS_COL, 'whitelistSuperadmin'), { emails: arrayUnion(bersih) }, { merge: true });
 }
 
 export async function hapusWhitelistSuperadmin(email: string): Promise<void> {
   const bersih = email.toLowerCase().trim();
-  const daftar = await getWhitelistSuperadmin();
-  await setDoc(doc(db, SETTINGS_COL, 'whitelistSuperadmin'), { emails: daftar.filter((e) => e !== bersih) }, { merge: true });
+  await setDoc(doc(db, SETTINGS_COL, 'whitelistSuperadmin'), { emails: arrayRemove(bersih) }, { merge: true });
 }
 
 // ============================================================
@@ -343,6 +343,15 @@ export async function ubahUsernameAkunPortal(id: string, usernameBaru: string): 
  * (Username + Email + Password baru = satu paket yang saling terikat). Akun Firebase Auth LAMA
  * (kalau emailnya berubah) otomatis jadi tidak terpakai lagi — aman diabaikan, atau dihapus
  * manual lewat Firebase Console kalau mau beres-beres.
+ *
+ * PERBAIKAN: kalau Email TIDAK diganti (Superadmin cuma mau reset Password, email tetap sama),
+ * createUserWithEmailAndPassword() di atas PASTI GAGAL dengan "auth/email-already-in-use" —
+ * karena email itu memang sudah terdaftar (itu akun yang mau direset). Firebase tidak
+ * mengizinkan mengganti password akun orang lain begitu saja dari client, jadi satu-satunya
+ * jalan yang benar-benar valid adalah: kirim Magic Link Reset Password ke email yang sama
+ * (mekanisme yang sama dengan kirimMagicLinkResetPassword), lalu user yang bersangkutan
+ * mengatur password barunya sendiri lewat email itu. Melempar SudahAdaEmailSamaError supaya
+ * pemanggil (Landing.tsx) bisa menampilkan pesan yang sesuai.
  */
 export async function resetEmailPasswordAkunPortal(
   id: string,
@@ -353,11 +362,30 @@ export async function resetEmailPasswordAkunPortal(
   const existing = await cariAkunPortalByEmail(emailBaru);
   if (existing && existing.id !== id) throw new Error('Email ini sudah dipakai akun lain.');
 
+  if (existing && existing.id === id) {
+    // Email tidak berubah -> tidak bisa createUserWithEmailAndPassword (akan selalu gagal
+    // karena email sudah terpakai). Kirim Magic Link Reset Password sebagai gantinya.
+    await sendPasswordResetEmail(auth, emailBaru, actionCodeSettingsResetPassword());
+    throw new SudahAdaEmailSamaError(emailBaru);
+  }
+
   const kredensial = await createUserWithEmailAndPassword(secondaryAuth, emailBaru, data.password);
   await signOut(secondaryAuth).catch(() => undefined);
   void kredensial; // hanya perlu efek pembuatan akunnya, tidak perlu dipakai lagi di sini
 
   await updateDoc(doc(db, AKUN_PORTAL_COL, id), { email: emailBaru });
+}
+
+/**
+ * Ditandai secara khusus (bukan Error biasa) supaya UI (Landing.tsx) bisa menampilkan pesan
+ * "Magic Link terkirim" (sukses secara praktik) alih-alih pesan "Gagal" — walau secara teknis
+ * fungsi di atas berhenti lewat throw karena password TIDAK langsung diganti di sini.
+ */
+export class SudahAdaEmailSamaError extends Error {
+  constructor(public email: string) {
+    super(`Password tidak bisa diganti langsung tanpa mengubah Email (keterbatasan Firebase Auth). Magic Link Reset Password sudah dikirim ke ${email} — minta pemilik akun mengatur password barunya sendiri lewat email tersebut.`);
+    this.name = 'SudahAdaEmailSamaError';
+  }
 }
 
 /**

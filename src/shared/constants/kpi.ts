@@ -13,7 +13,14 @@ export const DAFTAR_DIVISI = [
   'PACKING',
   'Operasional',
   'UMUM',
+  'Butuh Konfirmasi Ulang',
 ] as const;
+
+// Dipakai sebagai nilai default Divisi saat import Excel TIDAK menemukan kolom "Divisi" sama
+// sekali (lihat excelImport.ts) — supaya <select> tidak diam-diam jatuh ke opsi pertama
+// ('3D Artist') hanya karena state-nya string kosong, yang bisa bikin HRD salah kira divisi
+// karyawan itu memang 3D Artist padahal sebenarnya belum diisi sama sekali di file sumber.
+export const DIVISI_BUTUH_KONFIRMASI = 'Butuh Konfirmasi Ulang';
 
 export type NamaDivisi = (typeof DAFTAR_DIVISI)[number];
 

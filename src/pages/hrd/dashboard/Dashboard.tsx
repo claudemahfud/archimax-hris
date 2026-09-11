@@ -42,10 +42,13 @@ export default function Dashboard() {
       setError('');
       try {
         const hodList = await listKaryawanHod();
+        // Ambil riwayat KPI semua HOD/EKSEKUTIF secara paralel (bukan satu-satu berurutan)
+        // supaya waktu muat tidak bertambah linear dengan jumlah karyawan.
+        const riwayatPerKaryawan = await Promise.all(hodList.map((k) => listRiwayatKpi(k.id)));
         const baris: BarisRanking[] = [];
         const semuaRiwayat: PenilaianKpi[] = [];
-        for (const k of hodList) {
-          const riwayat = await listRiwayatKpi(k.id);
+        hodList.forEach((k, i) => {
+          const riwayat = riwayatPerKaryawan[i];
           semuaRiwayat.push(...riwayat);
           const terakhir = riwayat[0];
           baris.push({
@@ -54,7 +57,7 @@ export default function Dashboard() {
             skorKedisiplinan: terakhir?.skorKedisiplinan ?? 100,
             periode: terakhir?.periodeMinggu ?? '-',
           });
-        }
+        });
         baris.sort((a, b) => (b.skorTerakhir + b.skorKedisiplinan) - (a.skorTerakhir + a.skorKedisiplinan));
 
         const perPeriode = new Map<string, number[]>();

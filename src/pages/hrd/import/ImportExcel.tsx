@@ -19,6 +19,9 @@ const NAV_ITEMS = [
 ];
 
 type BarisImport = {
+  // Id unik per baris (BUKAN nama file) — dipakai sebagai React key supaya tidak bentrok kalau
+  // ada 2 file dengan nama persis sama diupload sekaligus (mis. dua "data.xlsx" berbeda isi).
+  rowId: string;
   file: File;
   status: 'menunggu' | 'terbaca' | 'gagal-baca' | 'menyimpan' | 'tersimpan' | 'gagal-simpan';
   hasil?: HasilImportExcel;
@@ -26,6 +29,10 @@ type BarisImport = {
   idTersimpan?: string;
   jumlahRiwayatBaru?: number;
 };
+
+function buatRowId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 export default function ImportExcel() {
   const { terverifikasi, keluar: keluarHrd } = useAksesGate('akses_hrd');
@@ -41,16 +48,16 @@ export default function ImportExcel() {
     e.target.value = '';
     if (files.length === 0) return;
 
-    const baruAwal: BarisImport[] = files.map((file) => ({ file, status: 'menunggu' }));
+    const baruAwal: BarisImport[] = files.map((file) => ({ rowId: buatRowId(), file, status: 'menunggu' }));
     setBaris((prev) => [...prev, ...baruAwal]);
     setMembaca(true);
 
-    for (const file of files) {
+    for (const baris of baruAwal) {
       try {
-        const hasil = await parseKaryawanExcel(file);
-        setBaris((prev) => prev.map((b) => (b.file === file ? { ...b, status: 'terbaca', hasil } : b)));
+        const hasil = await parseKaryawanExcel(baris.file);
+        setBaris((prev) => prev.map((b) => (b.rowId === baris.rowId ? { ...b, status: 'terbaca', hasil } : b)));
       } catch (err) {
-        setBaris((prev) => prev.map((b) => (b.file === file
+        setBaris((prev) => prev.map((b) => (b.rowId === baris.rowId
           ? { ...b, status: 'gagal-baca', errorMsg: err instanceof Error ? err.message : String(err) }
           : b)));
       }
@@ -60,14 +67,14 @@ export default function ImportExcel() {
 
   async function simpanSatu(target: BarisImport) {
     if (!target.hasil) return;
-    setBaris((prev) => prev.map((b) => (b.file === target.file ? { ...b, status: 'menyimpan' } : b)));
+    setBaris((prev) => prev.map((b) => (b.rowId === target.rowId ? { ...b, status: 'menyimpan' } : b)));
     try {
       const { id, jumlahRiwayatBaru } = await importSatuKaryawan(target.hasil);
-      setBaris((prev) => prev.map((b) => (b.file === target.file
+      setBaris((prev) => prev.map((b) => (b.rowId === target.rowId
         ? { ...b, status: 'tersimpan', idTersimpan: id, jumlahRiwayatBaru }
         : b)));
     } catch (err) {
-      setBaris((prev) => prev.map((b) => (b.file === target.file
+      setBaris((prev) => prev.map((b) => (b.rowId === target.rowId
         ? { ...b, status: 'gagal-simpan', errorMsg: err instanceof Error ? err.message : String(err) }
         : b)));
     }
@@ -83,8 +90,8 @@ export default function ImportExcel() {
     showToast('success', `Selesai memproses ${siap.length} file.`);
   }
 
-  function hapusBaris(file: File) {
-    setBaris((prev) => prev.filter((b) => b.file !== file));
+  function hapusBaris(rowId: string) {
+    setBaris((prev) => prev.filter((b) => b.rowId !== rowId));
   }
 
   if (!terverifikasi) return <Navigate to={ROUTES.HRD_AKSES} replace />;
@@ -134,7 +141,7 @@ export default function ImportExcel() {
                 </thead>
                 <tbody>
                   {baris.map((b) => (
-                    <tr key={b.file.name}>
+                    <tr key={b.rowId}>
                       <td>{b.file.name}</td>
                       <td>{b.hasil?.karyawan.namaLengkap || '-'}</td>
                       <td>{b.hasil?.karyawan.nip || '-'}</td>
@@ -182,7 +189,7 @@ export default function ImportExcel() {
                           <button type="button" className="btn btn-secondary" onClick={() => simpanSatu(b)}>Simpan</button>
                         )}
                         {(b.status === 'terbaca' || b.status === 'gagal-baca' || b.status === 'tersimpan' || b.status === 'gagal-simpan') && (
-                          <button type="button" className="btn btn-secondary" onClick={() => hapusBaris(b.file)}>Hapus</button>
+                          <button type="button" className="btn btn-secondary" onClick={() => hapusBaris(b.rowId)}>Hapus</button>
                         )}
                       </td>
                     </tr>

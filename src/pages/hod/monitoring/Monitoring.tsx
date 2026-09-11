@@ -36,10 +36,12 @@ export default function Monitoring() {
       setError('');
       try {
         const staffDivisi = (await listKaryawan(divisi)).filter((k) => k.levelUser === 'Staff');
+        // Paralel, bukan satu-satu berurutan — lihat catatan yang sama di Dashboard HRD.
+        const riwayatPerKaryawan = await Promise.all(staffDivisi.map((k) => listRiwayatKpi(k.id)));
         const baris: BarisRekap[] = [];
         const semuaRiwayat: PenilaianKpi[] = [];
-        for (const k of staffDivisi) {
-          const riwayat = await listRiwayatKpi(k.id);
+        staffDivisi.forEach((k, i) => {
+          const riwayat = riwayatPerKaryawan[i];
           semuaRiwayat.push(...riwayat);
           const terakhir = riwayat[0];
           baris.push({
@@ -48,7 +50,7 @@ export default function Monitoring() {
             skorKedisiplinan: terakhir?.skorKedisiplinan ?? 100,
             periode: terakhir?.periodeMinggu ?? '-',
           });
-        }
+        });
         baris.sort((a, b) => (b.skorTerakhir + b.skorKedisiplinan) - (a.skorTerakhir + a.skorKedisiplinan));
 
         const perPeriode = new Map<string, number[]>();
