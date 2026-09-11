@@ -397,15 +397,18 @@ export default function KelolaKaryawan() {
             <label htmlFor="alamatKtp">Alamat KTP (Alamat Lengkap)</label>
             <textarea id="alamatKtp" value={form.alamatKtp} onChange={(e) => updateField('alamatKtp', e.target.value)} placeholder="Contoh: Jl. Contoh No. 12, RT 01/RW 02, Kelurahan, Kecamatan, Kota, Provinsi, Kode Pos" />
           </div>
-          <div className="form-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <input
-              id="domisiliSamaKtp"
-              type="checkbox"
-              checked={domisiliSama}
-              onChange={(e) => setDomisiliSama(e.target.checked)}
-              style={{ width: 18, height: 18 }}
-            />
-            <label htmlFor="domisiliSamaKtp" style={{ margin: 0 }}>Alamat Domisili sama dengan Alamat KTP</label>
+          <div className="form-field toggle-row">
+            <span className="toggle-switch">
+              <input
+                id="domisiliSamaKtp"
+                type="checkbox"
+                checked={domisiliSama}
+                onChange={(e) => setDomisiliSama(e.target.checked)}
+              />
+              <span className="toggle-track" />
+              <span className="toggle-thumb" />
+            </span>
+            <label htmlFor="domisiliSamaKtp">Alamat Domisili sama dengan Alamat KTP</label>
           </div>
           {!domisiliSama && (
             <div className="form-field">
