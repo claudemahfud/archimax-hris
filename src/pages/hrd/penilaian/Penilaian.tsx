@@ -4,18 +4,21 @@ import { ROUTES } from '../../../router/routePaths';
 import { useAksesGate } from '../../../shared/hooks/useAksesGate';
 import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useToast } from '../../../shared/hooks/useToast';
-import { PortalNav } from '../../../shared/components/PortalNav';
+import { AppShell } from '../../../shared/components/AppShell';
 import { KpiForm } from '../../../shared/components/KpiForm';
 import { Spinner } from '../../../shared/components/Loading';
 import { listKaryawanHod } from '../../../shared/lib/firestore';
 import type { Karyawan } from '../../../shared/types';
+import {
+  IconHome, IconUsers, IconClipboardList, IconUploadCloud, IconBuilding,
+} from '../../../shared/components/Icons';
 
 const NAV_ITEMS = [
-  { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik' },
-  { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan' },
-  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM' },
-  { to: ROUTES.HRD_IMPORT, label: 'Import Excel' },
-  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan' },
+  { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik', icon: <IconHome /> },
+  { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan', icon: <IconUsers /> },
+  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM', icon: <IconClipboardList /> },
+  { to: ROUTES.HRD_IMPORT, label: 'Import Excel', icon: <IconUploadCloud /> },
+  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan', icon: <IconBuilding /> },
 ];
 
 export default function Penilaian() {
@@ -45,19 +48,16 @@ export default function Penilaian() {
   if (!terverifikasi) return <Navigate to={ROUTES.HRD_AKSES} replace />;
 
   return (
-    <div>
-      <PortalNav title="Master File HRD" items={NAV_ITEMS} onKeluar={keluar} />
-      <div className="page">
-        <h1>Form Penilaian Karyawan</h1>
-        <p>Master File HRD hanya menilai KPI untuk karyawan dengan Level User <strong>HOD</strong>, <strong>Branch Manager</strong>, atau <strong>EKSEKUTIF</strong>. Penilaian Staff dilakukan HOD/Branch Manager masing-masing divisi lewat portalnya sendiri.</p>
-        {loading ? (
-          <Spinner label="Memuat daftar HOD & EKSEKUTIF..." />
-        ) : hodList.length === 0 ? (
-          <p className="card">Belum ada karyawan Level User HOD/Branch Manager/EKSEKUTIF terdaftar. Tambahkan lewat menu Kelola Karyawan.</p>
-        ) : (
-          <KpiForm targets={hodList} dinilaiOleh="HRD" />
-        )}
-      </div>
-    </div>
+    <AppShell portalTitle="Master File HRD" pageTitle="Form Penilaian Karyawan" items={NAV_ITEMS} onKeluar={keluar}>
+      <h1>Form Penilaian Karyawan</h1>
+      <p>Master File HRD hanya menilai KPI untuk karyawan dengan Level User <strong>HOD</strong>, <strong>Branch Manager</strong>, atau <strong>EKSEKUTIF</strong>. Penilaian Staff dilakukan HOD/Branch Manager masing-masing divisi lewat portalnya sendiri.</p>
+      {loading ? (
+        <Spinner label="Memuat daftar HOD & EKSEKUTIF..." />
+      ) : hodList.length === 0 ? (
+        <p className="card">Belum ada karyawan Level User HOD/Branch Manager/EKSEKUTIF terdaftar. Tambahkan lewat menu Kelola Karyawan.</p>
+      ) : (
+        <KpiForm targets={hodList} dinilaiOleh="HRD" />
+      )}
+    </AppShell>
   );
 }

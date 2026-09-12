@@ -7,21 +7,24 @@ import { Line } from 'react-chartjs-2';
 import { ROUTES } from '../../../router/routePaths';
 import { useAksesGate } from '../../../shared/hooks/useAksesGate';
 import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
-import { PortalNav } from '../../../shared/components/PortalNav';
+import { AppShell } from '../../../shared/components/AppShell';
 import { Spinner } from '../../../shared/components/Loading';
 import { listKaryawanHod, listRiwayatKpi } from '../../../shared/lib/firestore';
 import type { Karyawan, PenilaianKpi } from '../../../shared/types';
+import {
+  IconHome, IconUsers, IconClipboardList, IconUploadCloud, IconBuilding, IconTrendingUp, IconTrophy,
+} from '../../../shared/components/Icons';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
 interface BarisRanking { karyawan: Karyawan; skorTerakhir: number; skorKedisiplinan: number; periode: string }
 
 const NAV_ITEMS = [
-  { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik' },
-  { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan' },
-  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM' },
-  { to: ROUTES.HRD_IMPORT, label: 'Import Excel' },
-  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan' },
+  { to: ROUTES.HRD_DASHBOARD, label: 'Homepage & Grafik', icon: <IconHome /> },
+  { to: ROUTES.HRD_KARYAWAN, label: 'Kelola Karyawan', icon: <IconUsers /> },
+  { to: ROUTES.HRD_PENILAIAN, label: 'Form Penilaian HOD/BM', icon: <IconClipboardList /> },
+  { to: ROUTES.HRD_IMPORT, label: 'Import Excel', icon: <IconUploadCloud /> },
+  { to: ROUTES.HRD_PROFIL_PERUSAHAAN, label: 'Profil Perusahaan', icon: <IconBuilding /> },
 ];
 
 export default function Dashboard() {
@@ -87,14 +90,46 @@ export default function Dashboard() {
 
   if (!terverifikasi) return <Navigate to={ROUTES.HRD_AKSES} replace />;
 
-  return (
-    <div>
-      <PortalNav title="Master File HRD" items={NAV_ITEMS} onKeluar={keluar} />
-      <div className="page">
-        <h1>Homepage &amp; Grafik</h1>
-        <p>Tren performa KPI perusahaan dan ranking Level User HOD/Branch Manager/EKSEKUTIF.</p>
+  const rataRataTerakhir = ranking.length
+    ? ranking.reduce((a, r) => a + r.skorTerakhir, 0) / ranking.length
+    : 0;
 
-        <div className="card">
+  return (
+    <AppShell portalTitle="Master File HRD" pageTitle="Homepage & Grafik" items={NAV_ITEMS} onKeluar={keluar}>
+      <h1>Homepage &amp; Grafik</h1>
+      <p>Tren performa KPI perusahaan dan ranking Level User HOD/Branch Manager/EKSEKUTIF.</p>
+
+      <div className="dash-grid">
+        <div className="card metric-card metric-card-amber dash-span-4">
+          <div className="metric-card-head">
+            <span className="metric-card-label">Total Dinilai</span>
+            <span className="metric-card-icon"><IconUsers /></span>
+          </div>
+          <span className="metric-card-value">{loading ? '—' : ranking.length}</span>
+          <span className="metric-card-sub">HOD / Branch Manager / EKSEKUTIF terdaftar</span>
+        </div>
+
+        <div className="card metric-card metric-card-green dash-span-4">
+          <div className="metric-card-head">
+            <span className="metric-card-label">Rata-rata Skor Terakhir</span>
+            <span className="metric-card-icon"><IconTrophy /></span>
+          </div>
+          <span className="metric-card-value">{loading ? '—' : rataRataTerakhir.toFixed(1)}</span>
+          <span className="metric-card-sub">Gabungan seluruh level user</span>
+        </div>
+
+        <div className="card dash-span-4">
+          <div className="metric-card-head">
+            <h2 style={{ margin: 0 }}>Periode Terpantau</h2>
+            <span className="metric-card-icon" style={{ color: 'var(--orange-600)' }}><IconTrendingUp /></span>
+          </div>
+          <span className="metric-card-value" style={{ color: 'var(--text-main)' }}>
+            {loading ? '—' : trendLabels.length}
+          </span>
+          <span className="metric-card-sub" style={{ color: 'var(--grey-medium)' }}>Minggu penilaian tercatat</span>
+        </div>
+
+        <div className="card dash-span-8">
           <h2>Tren Skor Rata-rata Perusahaan</h2>
           {loading ? (
             <Spinner label="Memuat grafik tren..." />
@@ -119,8 +154,8 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="card">
-          <h2>Ranking Level User HOD/Branch Manager/EKSEKUTIF</h2>
+        <div className="card dash-span-4">
+          <h2>Ranking</h2>
           {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
           {loading ? (
             <>
@@ -129,6 +164,28 @@ export default function Dashboard() {
           ) : ranking.length === 0 ? (
             <p>Belum ada karyawan dengan Level User HOD/Branch Manager/EKSEKUTIF terdaftar.</p>
           ) : (
+            <div>
+              {ranking.slice(0, 6).map((r) => (
+                <div className="list-card-row" key={r.karyawan.id}>
+                  <span className="list-card-avatar" aria-hidden="true">
+                    {r.karyawan.namaLengkap.trim().charAt(0).toUpperCase() || '?'}
+                  </span>
+                  <div className="list-card-info">
+                    <div className="list-card-name">{r.karyawan.namaLengkap}</div>
+                    <div className="list-card-meta">{r.karyawan.divisi} · {r.periode}</div>
+                  </div>
+                  <span className={`badge ${r.skorKedisiplinan >= 80 ? 'badge-good' : 'badge-bad'}`}>
+                    {r.skorTerakhir.toFixed(1)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {!loading && ranking.length > 0 && (
+          <div className="card dash-span-12">
+            <h2>Detail Ranking Lengkap</h2>
             <div className="table-scroll">
               <table className="data-table">
                 <thead>
@@ -154,9 +211,9 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </div>
+    </AppShell>
   );
 }

@@ -18,7 +18,8 @@ import { useAksesHod } from '../../shared/hooks/useAksesHod';
 import { useAksesBranchManager } from '../../shared/hooks/useAksesBranchManager';
 import { useToast } from '../../shared/hooks/useToast';
 import { Spinner } from '../../shared/components/Loading';
-import { PortalNav } from '../../shared/components/PortalNav';
+import { AppShell } from '../../shared/components/AppShell';
+import { IconHome, IconMonitor, IconKeyRound, IconUserCircle, IconUsers, IconSettings } from '../../shared/components/Icons';
 
 // Susunan dekorasi geometris (facet) latar Welcome Page — posisi & ukuran tetap (bukan acak)
 // supaya tampilan konsisten setiap render, meniru pola mozaik diamond pada referensi desain.
@@ -329,20 +330,18 @@ export default function Landing() {
   // ==== Sudah login sebagai Superadmin (akun kendali penuh — Full Akses 100%) ====
   if (terverifikasiSuperadmin) {
     return (
-      <div>
-        <PortalNav title="Archimax HRIS" items={[]} onKeluar={keluarSuperadmin} />
-        <div className="page">
+      <AppShell portalTitle="Archimax HRIS" pageTitle="Selamat Datang, Superadmin" items={[]} onKeluar={keluarSuperadmin}>
           <div className="card" style={{ maxWidth: 480, margin: '32px auto', textAlign: 'center' }}>
             {Logo(140)}
             <h1 className="login-title">Selamat Datang, Superadmin</h1>
             <p className="login-subtitle">Pilih portal yang ingin dikelola.</p>
             <div className="dashboard-links">
-              <Link to={ROUTES.HRD_DASHBOARD} className="btn">Master File HRD</Link>
-              <Link to={ROUTES.HOD_AKSES} className="btn btn-secondary">Portal HOD</Link>
-              <Link to={ROUTES.BM_AKSES} className="btn btn-secondary">Portal Branch Manager</Link>
-              <Link to={ROUTES.GANTI_KODE_AKSES} className="btn btn-secondary">Ganti Kode Akses</Link>
-              <Link to={ROUTES.KELOLA_KODE_AKSES_HOD} className="btn btn-secondary">Kelola Kode Akses HOD &amp; BM</Link>
-              <Link to={ROUTES.PROFIL} className="btn btn-secondary">Profil Saya</Link>
+              <Link to={ROUTES.HRD_DASHBOARD} className="btn"><IconHome /> Master File HRD</Link>
+              <Link to={ROUTES.HOD_AKSES} className="btn btn-secondary"><IconMonitor /> Portal HOD</Link>
+              <Link to={ROUTES.BM_AKSES} className="btn btn-secondary"><IconMonitor /> Portal Branch Manager</Link>
+              <Link to={ROUTES.GANTI_KODE_AKSES} className="btn btn-secondary"><IconKeyRound /> Ganti Kode Akses</Link>
+              <Link to={ROUTES.KELOLA_KODE_AKSES_HOD} className="btn btn-secondary"><IconSettings /> Kelola Kode Akses HOD &amp; BM</Link>
+              <Link to={ROUTES.PROFIL} className="btn btn-secondary"><IconUserCircle /> Profil Saya</Link>
             </div>
 
             <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--grey-light, #e5e5e5)', textAlign: 'left' }}>
@@ -553,69 +552,59 @@ export default function Landing() {
               )}
             </div>
           </div>
-        </div>
-      </div>
+      </AppShell>
     );
   }
 
   // ==== Sudah login sebagai HRD (akun Google terdaftar) — TANPA Portal HOD & Ganti Kode Akses ====
   if (terverifikasiHrd) {
     return (
-      <div>
-        <PortalNav title="Archimax HRIS" items={[]} onKeluar={keluarHrd} />
-        <div className="page">
+      <AppShell portalTitle="Archimax HRIS" pageTitle="Selamat Datang, HRD" items={[]} onKeluar={keluarHrd}>
           <div className="card" style={{ maxWidth: 480, margin: '32px auto', textAlign: 'center' }}>
             {Logo(140)}
             <h1 className="login-title">Selamat Datang, HRD</h1>
             <p className="login-subtitle">Pilih portal yang ingin dikelola.</p>
             <div className="dashboard-links">
-              <Link to={ROUTES.HRD_DASHBOARD} className="btn">Master File HRD</Link>
-              <Link to={ROUTES.HRD_KARYAWAN} className="btn btn-secondary">Kelola Karyawan</Link>
-              <Link to={ROUTES.PROFIL} className="btn btn-secondary">Profil Saya</Link>
+              <Link to={ROUTES.HRD_DASHBOARD} className="btn"><IconHome /> Master File HRD</Link>
+              <Link to={ROUTES.HRD_KARYAWAN} className="btn btn-secondary"><IconUsers /> Kelola Karyawan</Link>
+              <Link to={ROUTES.PROFIL} className="btn btn-secondary"><IconUserCircle /> Profil Saya</Link>
             </div>
           </div>
-        </div>
-      </div>
+      </AppShell>
     );
   }
 
   // ==== Sudah login sebagai HOD (akun Google terdaftar per divisi) ====
   if (terverifikasiHod) {
     return (
-      <div>
-        <PortalNav title="Archimax HRIS" items={[]} onKeluar={keluarHod} />
-        <div className="page">
+      <AppShell portalTitle="Archimax HRIS" pageTitle={`Selamat Datang, HOD ${divisiHod}`} items={[]} onKeluar={keluarHod}>
           <div className="card" style={{ maxWidth: 480, margin: '32px auto', textAlign: 'center' }}>
             {Logo(140)}
             <h1 className="login-title">Selamat Datang, HOD {divisiHod}</h1>
             <p className="login-subtitle">Pilih portal yang ingin dikelola.</p>
             <div className="dashboard-links">
-              <Link to={ROUTES.HOD_MONITORING} className="btn">Portal HOD</Link>
-              <Link to={ROUTES.PROFIL} className="btn btn-secondary">Profil Saya</Link>
+              <Link to={ROUTES.HOD_MONITORING} className="btn"><IconMonitor /> Portal HOD</Link>
+              <Link to={ROUTES.PROFIL} className="btn btn-secondary"><IconUserCircle /> Profil Saya</Link>
             </div>
           </div>
-        </div>
-      </div>
+      </AppShell>
     );
   }
 
   // ==== Sudah login sebagai Branch Manager (akun Google terdaftar per divisi) ====
   if (terverifikasiBm) {
     return (
-      <div>
-        <PortalNav title="Archimax HRIS" items={[]} onKeluar={keluarBm} />
-        <div className="page">
+      <AppShell portalTitle="Archimax HRIS" pageTitle={`Selamat Datang, Branch Manager ${divisiBm}`} items={[]} onKeluar={keluarBm}>
           <div className="card" style={{ maxWidth: 480, margin: '32px auto', textAlign: 'center' }}>
             {Logo(140)}
             <h1 className="login-title">Selamat Datang, Branch Manager {divisiBm}</h1>
             <p className="login-subtitle">Pilih portal yang ingin dikelola.</p>
             <div className="dashboard-links">
-              <Link to={ROUTES.BM_MONITORING} className="btn">Portal Branch Manager</Link>
-              <Link to={ROUTES.PROFIL} className="btn btn-secondary">Profil Saya</Link>
+              <Link to={ROUTES.BM_MONITORING} className="btn"><IconMonitor /> Portal Branch Manager</Link>
+              <Link to={ROUTES.PROFIL} className="btn btn-secondary"><IconUserCircle /> Profil Saya</Link>
             </div>
           </div>
-        </div>
-      </div>
+      </AppShell>
     );
   }
 

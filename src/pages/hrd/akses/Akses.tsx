@@ -16,7 +16,12 @@ export default function Akses() {
   const [loading, setLoading] = useState(false);
 
   // Superadmin = akses 100% (sudah otomatis lolos PIN HRD saat login, lihat useAksesSuperadmin).
-  if (isSuperadmin) return <Navigate to={ROUTES.HRD_DASHBOARD} replace />;
+  // Set eksplisit di sini juga (bukan cuma andalkan tandaiSesiPenuh) supaya kalau dua flag ini
+  // pernah tidak sinkron (sesi lama dsb), tidak terjadi redirect loop tak berhenti dengan Dashboard.
+  if (isSuperadmin) {
+    sessionStorage.setItem('akses_hrd', '1');
+    return <Navigate to={ROUTES.HRD_DASHBOARD} replace />;
+  }
 
 
   async function handleSubmit(e: FormEvent) {

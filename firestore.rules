@@ -2,39 +2,93 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // karyawan & penilaianKpi: dipakai langsung oleh app (tanpa Firebase Auth),
-    // jadi read/write dibuka supaya form Tambah/Edit Karyawan & Form Penilaian KPI berfungsi.
-    match /karyawan/{docId} {
-      allow read, write: if true;
+    // ============================================================
+    // Helper functions
+    // ============================================================
+    // Dokumen akunPortal SEKARANG selalu ber-ID == uid Firebase Auth pemiliknya (lihat
+    // daftarkanAkunPortal & loginAkunPortal di src/shared/lib/firestore.ts) — jadi role & divisi
+    // pemilik sesi bisa langsung diambil lewat get() tanpa query, tanpa Cloud Functions/custom
+    // claims sama sekali.
+    function akunAda() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/akunPortal/$(request.auth.uid));
     }
-    match /penilaianKpi/{docId} {
-      allow read, write: if true;
+    function akunSaya() {
+      return get(/databases/$(database)/documents/akunPortal/$(request.auth.uid)).data;
+    }
+    function isHrd() {
+      return akunAda() && akunSaya().role == 'HRD';
+    }
+    // Superadmin diakui HANYA lewat Login Google yang emailnya ada di whitelist (satu-satunya
+    // jalur Superadmin yang menghasilkan sesi Firebase Auth sungguhan). Login manual
+    // Username/Password Superadmin (settings/superadmin) TIDAK menghasilkan sesi Firebase Auth,
+    // jadi TIDAK otomatis lolos rules ini — lihat catatan di ringkasan chat/README.
+    function isSuperadminGoogle() {
+      return request.auth != null && request.auth.token.email != null &&
+        exists(/databases/$(database)/documents/settings/whitelistSuperadmin) &&
+        request.auth.token.email.lower() in
+          get(/databases/$(database)/documents/settings/whitelistSuperadmin).data.emails;
+    }
+    function isMaster() {
+      return isHrd() || isSuperadminGoogle();
+    }
+    function isHodAtauBm() {
+      return akunAda() && (akunSaya().role == 'HOD' || akunSaya().role == 'Branch Manager');
+    }
+    function divisiSaya() {
+      return akunSaya().divisi;
     }
 
-    // settings: app butuh READ untuk verifikasi Kode Akses HRD & login Superadmin.
-    // WRITE hanya dibuka untuk dokumen aksesHrd — itu yang diubah lewat menu
-    // "Ganti Kode Akses" di Welcome Page (setelah login Superadmin/Google di sisi client).
-    // Kode Akses Portal HOD sekarang pribadi per akun (field kodeAkses di koleksi akunPortal
-    // di bawah), bukan lagi disimpan di settings/aksesHod.
-    // Dokumen "superadmin" (username/password) tetap read-only dari client — kalau mau
-    // diganti dari default (Superadmin / Admin123), isi manual lewat tab "Data" di Firebase
-    // Console.
+    // ============================================================
+    // karyawan & penilaianKpi
+    // ============================================================
+    // Prinsip: TIDAK mengubah apa pun untuk sesi yang BUKAN HOD/Branch Manager (HRD, Superadmin,
+    // maupun akses publik Rapor Online tetap persis seperti sebelumnya — di luar cakupan
+    // permintaan privasi kali ini). Yang berubah HANYA: sesi HOD/Branch Manager sekarang dibatasi
+    // ketat ke Divisi miliknya sendiri, ditegakkan Firestore sendiri (bukan cuma disembunyikan di
+    // UI) — walau dipanggil langsung lewat SDK/console, tetap tidak bisa baca/tulis Divisi lain.
+    match /karyawan/{docId} {
+      allow read: if !isHodAtauBm() || isMaster() || resource.data.divisi == divisiSaya();
+      allow write: if !isHodAtauBm() || isMaster() || (
+        (resource == null || resource.data.divisi == divisiSaya()) &&
+        request.resource.data.divisi == divisiSaya()
+      );
+    }
+    match /penilaianKpi/{docId} {
+      allow read: if !isHodAtauBm() || isMaster() || resource.data.divisi == divisiSaya();
+      allow write: if !isHodAtauBm() || isMaster() || (
+        (resource == null || resource.data.divisi == divisiSaya()) &&
+        request.resource.data.divisi == divisiSaya()
+      );
+    }
+
+    // ============================================================
+    // parameterKpiCustom (Kelola Parameter KPI — baru)
+    // ============================================================
+    // ID dokumen == uid akun HOD/Branch Manager pemiliknya. Setiap akun HANYA boleh baca/tulis
+    // dokumen paramaternya SENDIRI — bahkan sesama HOD/BM di Divisi yang sama tidak bisa saling
+    // lihat/ubah parameter satu sama lain (sesuai keputusan: custom per akun, bukan per Divisi).
+    match /parameterKpiCustom/{docId} {
+      allow read: if isMaster() || (request.auth != null && request.auth.uid == docId);
+      allow write: if isMaster() || (request.auth != null && request.auth.uid == docId);
+    }
+
+    // ============================================================
+    // settings — TIDAK diubah dari sebelumnya
+    // ============================================================
     match /settings/{docId} {
       allow read: if true;
-      // companyInfo: konten umum (Visi Misi, Tata Tertib, Kebijakan Reward) yang diedit HRD
-      // lewat halaman "Profil Perusahaan" dan dibaca publik di semua halaman Rapor Online.
-      // whitelistSuperadmin: daftar email yang boleh login Google sebagai Superadmin, diatur
-      // Superadmin sendiri lewat halaman "Ganti Kode Akses".
       allow write: if docId == 'aksesHrd' || docId == 'companyInfo' || docId == 'whitelistSuperadmin';
     }
 
-    // akunPortal: pendaftaran Username + Email HRD/HOD (login via Username/Password ATAU Google)
-    // oleh Superadmin lewat Welcome Page — TERMASUK field kodeAkses (PIN pribadi Portal HOD per
-    // akun, dikelola lewat menu "Kelola Kode Akses HOD"). Password akun TIDAK disimpan di sini —
-    // hanya di Firebase Authentication (lihat daftarkanAkunPortal di
-    // src/shared/lib/firestore.ts). Sama seperti karyawan/penilaianKpi, proteksi baca/tulis
-    // dokumen ini berjalan di sisi client (belum ada Firebase Auth custom claims) — dicatat
-    // sebagai catatan keamanan yang sama dengan bagian lain.
+    // ============================================================
+    // akunPortal — SENGAJA TIDAK diperketat di revisi ini (di luar cakupan permintaan: bukan
+    // soal isolasi Divisi HOD/BM, melainkan direktori akun). Login manual Superadmin (username/
+    // password di settings/superadmin) TIDAK menghasilkan sesi Firebase Auth sungguhan, jadi
+    // kalau koleksi ini ditutup, fitur "Daftarkan Akun/Hapus Akun/Kelola Kode Akses" akan rusak
+    // untuk Superadmin yang login manual (bukan Google). Dibiarkan seperti semula sampai ada
+    // keputusan terpisah soal itu.
+    // ============================================================
     match /akunPortal/{docId} {
       allow read, write: if true;
     }

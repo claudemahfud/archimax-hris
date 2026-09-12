@@ -1,8 +1,10 @@
 import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { getSuperadminCredentials, getWhitelistSuperadmin } from '../lib/firestore';
 import { hapusSesiAkun } from '../lib/akunSession';
+import { ROUTES } from '../../router/routePaths';
 
 // Catatan keamanan: sama seperti Kode Akses (lihat useAksesGate.ts), pengecekan username/password
 // di sini berjalan di client. Login Google memakai Firebase Auth sungguhan (popup akun Google),
@@ -13,6 +15,7 @@ import { hapusSesiAkun } from '../lib/akunSession';
 const STORAGE_KEY = 'akses_superadmin';
 
 export function useAksesSuperadmin() {
+  const navigate = useNavigate();
   const [terverifikasi, setTerverifikasi] = useState<boolean>(
     () => sessionStorage.getItem(STORAGE_KEY) === '1',
   );
@@ -65,7 +68,9 @@ export function useAksesSuperadmin() {
     hapusSesiAkun();
     setTerverifikasi(false);
     if (auth.currentUser) signOut(auth).catch(() => undefined);
-  }, []);
+    // Logout langsung ke Welcome Page — lihat catatan yang sama di useAksesGate.ts.
+    navigate(ROUTES.LANDING);
+  }, [navigate]);
 
   return { terverifikasi, loginManual, loginGoogle, konfirmasiSuperadmin, keluar };
 }

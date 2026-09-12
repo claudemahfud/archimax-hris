@@ -33,10 +33,10 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-button, a, input, select, textarea, .btn, .nav-link, .nav-toggle { touch-action: manipulation; }
+button, a, input, select, textarea, .btn, .shell-nav-item, .shell-menu-btn, .shell-theme-btn { touch-action: manipulation; }
 
-html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
-body { overflow-x: hidden; }
+html { -webkit-text-size-adjust: 100%; overflow-x: clip; }
+body { overflow-x: clip; }
 img { max-width: 100%; }
 
 body, input, select, textarea, button {
@@ -122,69 +122,30 @@ a:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; bor
 .link-muted { color: var(--grey-medium); font-weight: 600; font-size: 0.9rem; text-decoration: underline; }
 .link-muted:active { color: var(--orange-700); }
 
-/* ==== Navigasi Portal (mobile-friendly, sticky, hamburger di layar sempit) ==== */
+.form-field { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+
+/* ==== Header statis khusus halaman Rapor Online (bukan portal ber-sidebar, jadi tetap
+   pakai header sederhana ini, terpisah dari .shell-* AppShell) ==== */
 .nav-bar {
   position: sticky; top: 0; z-index: 40;
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   padding: 10px 16px;
   background: var(--white);
   border-bottom: 1px solid var(--grey-light);
   box-shadow: 0 2px 8px rgba(32, 28, 23, 0.04);
 }
-.nav-brand {
-  font-weight: 800; padding: 8px 4px; margin-right: 4px;
-  background: var(--gradient-brand);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-  white-space: nowrap;
-}
-.nav-links {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-}
+.nav-brand { font-weight: 800; color: var(--text-main); white-space: nowrap; }
 .nav-link {
   padding: 10px 14px; border-radius: 999px; min-height: 44px;
-  color: var(--grey-medium); font-weight: 600; text-decoration: none; font-size: 0.92rem;
-  transition: background-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
+  color: var(--grey-medium); font-weight: 600; border: none; background: none; cursor: pointer;
+  font-size: 0.92rem; transition: background-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
   display: inline-flex; align-items: center; white-space: nowrap;
 }
 .nav-link.active { background: var(--gradient-brand); color: var(--white); box-shadow: 0 4px 12px rgba(255,122,0,0.28); }
-.nav-link:active:not(.active) { background: var(--orange-50); }
 .nav-link:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; }
-
-.nav-keluar {
-  margin-left: auto; border: none; background: none; cursor: pointer;
+@media (hover: hover) and (pointer: fine) {
+  .nav-link:hover:not(.active) { background: var(--orange-50); color: var(--orange-700); }
 }
-
-.nav-toggle {
-  display: none;
-  margin-left: auto;
-  width: 44px; height: 44px;
-  align-items: center; justify-content: center;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--grey-light);
-  background: var(--white);
-  cursor: pointer;
-  color: var(--orange-700);
-}
-.nav-toggle:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; }
-
-@media (max-width: 720px) {
-  .nav-bar { flex-wrap: nowrap; }
-  .nav-toggle { display: inline-flex; }
-  .nav-links {
-    position: absolute; left: 0; right: 0; top: 100%;
-    flex-direction: column; align-items: stretch; gap: 2px;
-    background: var(--white); border-bottom: 1px solid var(--grey-light);
-    padding: 8px 12px 14px; box-shadow: 0 12px 20px rgba(32,28,23,0.08);
-    max-height: 0; overflow: hidden; opacity: 0;
-    transition: max-height 260ms ease, opacity 200ms ease;
-  }
-  .nav-links.open { max-height: 480px; opacity: 1; padding: 8px 12px 14px; }
-  .nav-link { width: 100%; border-radius: var(--radius-sm); }
-  .nav-link.active { box-shadow: none; }
-  .nav-keluar { margin-left: 0; width: 100%; justify-content: flex-start; padding-left: 14px; }
-}
-
-.form-field { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
 .form-field label { font-weight: 600; font-size: 0.88rem; color: var(--grey-medium); }
 .form-field input, .form-field select, .form-field textarea {
   padding: 11px 13px; border: 1.5px solid var(--grey-light); border-radius: var(--radius-sm);
@@ -397,9 +358,196 @@ table.data-table tbody tr:nth-child(even) { background: rgba(247, 245, 242, 0.6)
   .btn-secondary:hover { background: var(--orange-50); border-color: var(--orange-400); box-shadow: 0 4px 12px rgba(32,28,23,0.08); }
   .btn-google:hover { background: var(--grey-bg); box-shadow: 0 4px 12px rgba(32,28,23,0.08); }
   .link-muted:hover { color: var(--orange-700); }
-  .nav-link:hover { background: var(--orange-50); color: var(--orange-700); }
-  .nav-toggle:hover { background: var(--orange-50); }
   .form-field input:hover, .form-field select:hover, .form-field textarea:hover { border-color: var(--orange-400); }
   table.data-table tbody tr:hover { background: var(--orange-50); }
   table.data-table tbody tr:nth-child(even):hover { background: var(--orange-50); }
+}
+/* ================================================================
+   MODE GELAP / CERAH (toggle tombol matahari-bulan di AppShell)
+   Cukup override token inti — .card/.page/.toast/.form-field dst di atas
+   otomatis ikut menyesuaikan karena semua sudah pakai var(--white) dkk.
+   ================================================================ */
+:root[data-tema="gelap"] {
+  --white: #241F19;
+  --grey-bg: #15120D;
+  --grey-light: #3A3126;
+  --grey-medium: #B5AA9B;
+  --text-main: #F2EDE6;
+  --gradient-surface: linear-gradient(180deg, #17130E 0%, #100D09 100%);
+  --shadow-card: 0 2px 14px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 10px 30px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+:root[data-tema="gelap"] .skeleton-row { background: linear-gradient(90deg, var(--grey-light) 25%, #2c261e 37%, var(--grey-light) 63%); background-size: 400% 100%; }
+
+/* ================================================================
+   APP SHELL — sidebar ikon gelap + topbar (pengganti .nav-bar lama)
+   Sidebar selalu pakai --grey-dark (warna gelap kecoklatan brand yang
+   sudah ada di palet) supaya konsisten di mode terang maupun gelap.
+   ================================================================ */
+.shell { min-height: 100vh; display: flex; background: var(--grey-bg); }
+
+.shell-sidebar {
+  position: sticky; top: 0; align-self: flex-start;
+  height: 100vh; width: 76px; flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; padding: 16px 0 12px;
+  background: var(--grey-dark);
+  z-index: 50;
+}
+.shell-logo { display: flex; justify-content: center; margin-bottom: 10px; }
+.shell-logo img { height: 34px; width: auto; max-width: 56px; object-fit: contain; }
+
+.shell-nav { display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center; overflow-y: auto; }
+.shell-nav-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  width: 56px; min-height: 52px; padding: 8px 4px;
+  border-radius: var(--radius-sm); border: none; background: none; cursor: pointer;
+  color: rgba(255,255,255,0.62); text-decoration: none;
+  transition: background-color 200ms ease, color 200ms ease, transform 200ms ease;
+}
+.shell-nav-label { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.01em; text-align: center; line-height: 1.15; text-shadow: none; }
+.shell-nav-item.active { background: var(--gradient-brand); color: var(--white); box-shadow: 0 4px 14px rgba(255,122,0,0.35); }
+.shell-nav-item.active .shell-nav-label { color: var(--white); }
+.shell-keluar { margin-top: auto; }
+.shell-nav-item:focus-visible { outline: 3px solid var(--orange-400); outline-offset: 2px; }
+
+.shell-overlay { display: none; }
+.shell-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.shell-topbar {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 20px; background: var(--white);
+  border-bottom: 1px solid var(--grey-light);
+  box-shadow: 0 2px 8px rgba(32, 28, 23, 0.04);
+}
+.shell-menu-btn { display: none; }
+.shell-titles { display: flex; flex-direction: column; min-width: 0; }
+.shell-portal-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--grey-medium); }
+.shell-page-title { font-size: 1.05rem; font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.shell-theme-btn {
+  margin-left: auto; width: 40px; height: 40px; border-radius: 999px; border: 1.5px solid var(--grey-light);
+  background: var(--white); color: var(--orange-700); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background-color 200ms ease, transform 200ms ease;
+}
+.shell-theme-btn:active { transform: scale(0.94); }
+.shell-theme-btn:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; }
+
+.shell-user { display: flex; align-items: center; gap: 8px; padding-left: 6px; }
+.shell-avatar {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--gradient-brand); color: var(--white);
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; text-shadow: none;
+}
+.shell-user-name { font-weight: 700; font-size: 0.9rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.shell-content { flex: 1; padding: 20px 16px 72px; max-width: 1200px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+
+@media (max-width: 860px) {
+  .shell-sidebar {
+    position: fixed; left: 0; top: 0; width: 220px; height: 100vh;
+    transform: translateX(-100%); transition: transform 260ms ease;
+    align-items: stretch; padding: 16px 10px;
+  }
+  .shell-sidebar.open { transform: translateX(0); }
+  .shell-logo { justify-content: flex-start; padding-left: 8px; }
+  .shell-nav { align-items: stretch; }
+  .shell-nav-item { flex-direction: row; justify-content: flex-start; width: 100%; gap: 10px; padding: 10px 12px; }
+  .shell-nav-label { font-size: 0.85rem; }
+  .shell-menu-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--grey-light); background: var(--white); color: var(--orange-700); cursor: pointer;
+  }
+  .shell-menu-btn:focus-visible { outline: 3px solid var(--orange-700); outline-offset: 2px; }
+  .shell-overlay {
+    display: block; position: fixed; inset: 0; z-index: 45; background: rgba(0,0,0,0.42);
+    border: none; padding: 0; cursor: pointer; animation: fade-in 200ms ease;
+  }
+  .shell-user-name, .shell-portal-title { display: none; }
+  .shell-content { padding: 16px 12px 60px; }
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+@media (hover: hover) and (pointer: fine) {
+  .shell-nav-item:not(.active):hover { background: rgba(255,255,255,0.08); color: var(--white); }
+  .shell-theme-btn:hover { background: var(--orange-50); }
+}
+
+/* ================================================================
+   DASHBOARD GRID — kartu metrik warna solid + kartu chart + kartu list
+   (dipakai Dashboard.tsx, dan halaman lain yang butuh tata letak serupa)
+   ================================================================ */
+.dash-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; }
+.dash-grid > * { min-width: 0; margin-bottom: 0; }
+.dash-span-4 { grid-column: span 12; }
+.dash-span-8 { grid-column: span 12; }
+.dash-span-12 { grid-column: span 12; }
+@media (min-width: 860px) {
+  .dash-span-4 { grid-column: span 4; }
+  .dash-span-8 { grid-column: span 8; }
+  .dash-span-12 { grid-column: span 12; }
+}
+
+.metric-card { border: none; color: var(--white); display: flex; flex-direction: column; gap: 10px; }
+.metric-card-amber { background: linear-gradient(135deg, var(--orange-400) 0%, var(--orange-600) 100%); }
+.metric-card-green { background: linear-gradient(135deg, #2FA967 0%, #1E7A34 100%); }
+.metric-card-head { display: flex; align-items: center; justify-content: space-between; }
+.metric-card-label { font-size: 0.74rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.92; }
+.metric-card-icon { opacity: 0.85; display: flex; }
+.metric-card-value { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+.metric-card-sub { font-size: 0.82rem; opacity: 0.9; }
+
+.list-card-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--grey-light); }
+.list-card-row:last-child { border-bottom: none; }
+.list-card-avatar {
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  background: var(--orange-50); color: var(--orange-700); font-weight: 800; font-size: 0.85rem;
+  display: flex; align-items: center; justify-content: center; text-shadow: none;
+}
+.list-card-info { min-width: 0; flex: 1; }
+.list-card-name { font-weight: 700; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.list-card-meta { font-size: 0.78rem; color: var(--grey-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ================================================================
+   HEADER SEKSI FORM (KpiForm, ProfilPerusahaan) — judul + ikon + chip skor
+   ================================================================ */
+/* Form Penilaian KPI — grid rapi: kolom sejajar walau label 1–3 baris,
+   input selalu jatuh di baris yang sama di setiap kartu dalam satu baris grid. */
+.kpi-grid.form-grid { row-gap: 18px; }
+.kpi-grid .form-field label {
+  display: flex;
+  align-items: flex-end;
+  min-height: 2.8em;
+  line-height: 1.35;
+}
+@media (max-width: 860px) {
+  .kpi-grid .span-3 { grid-column: span 4; } /* 4→3 kartu per baris di tablet */
+}
+
+.kpi-section-title { display: flex; align-items: center; gap: 8px; }
+.kpi-section-title svg { flex-shrink: 0; color: var(--orange-600); }
+.kpi-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.kpi-section-head .kpi-section-title { margin: 0; }
+.kpi-summary-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+  font-size: 0.82rem; font-weight: 700; white-space: nowrap;
+}
+.kpi-summary-chip span { font-weight: 600; opacity: 0.85; }
+.kpi-summary-chip strong { font-size: 0.95rem; }
+.kpi-summary-amber { background: var(--orange-50); color: var(--orange-700); }
+.kpi-summary-green { background: rgba(47, 169, 103, 0.14); color: #1E7A34; }
+.kpi-summary-red { background: rgba(214, 69, 69, 0.14); color: var(--danger); }
+
+.upload-dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 32px 16px; margin-top: 8px; border-radius: var(--radius-sm);
+  border: 2px dashed var(--grey-light); cursor: pointer; text-align: center;
+  color: var(--grey-medium); transition: border-color 200ms ease, background-color 200ms ease;
+}
+.upload-dropzone svg { color: var(--orange-600); width: 28px; height: 28px; }
+.upload-dropzone-title { font-weight: 700; color: var(--text-main); }
+.upload-dropzone-sub { font-size: 0.82rem; }
+@media (hover: hover) and (pointer: fine) {
+  .upload-dropzone:hover { border-color: var(--orange-400); background: var(--orange-50); }
 }

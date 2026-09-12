@@ -1,51 +1,49 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../router/routePaths';
 import { useAksesSuperadmin } from '../../../shared/hooks/useAksesSuperadmin';
 import { useToast } from '../../../shared/hooks/useToast';
-import { cariAkunPortalHodByDivisiDanKode } from '../../../shared/lib/firestore';
+import { loginAkunPortal } from '../../../shared/lib/firestore';
+import { simpanSesiAkun } from '../../../shared/lib/akunSession';
 import { DAFTAR_DIVISI } from '../../../shared/constants/kpi';
 import { Spinner } from '../../../shared/components/Loading';
 
-const WA_RESET_KODE_AKSES = '6282234651413';
-
+// Lihat catatan keamanan yang sama di pages/hod/akses/Akses.tsx — gerbang Divisi + Kode Akses
+// (PIN) lama dipensiunkan, diganti Login Username/Password sungguhan (Firebase Auth) supaya
+// firestore.rules bisa menegakkan isolasi Divisi Branch Manager.
 export default function Akses() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { terverifikasi: isSuperadmin } = useAksesSuperadmin();
   const [divisi, setDivisi] = useState<string>(DAFTAR_DIVISI[0]);
-  const [kode, setKode] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-
-  // Link WhatsApp "Lupa Kode Akses" — pesan template ikut menyesuaikan Divisi yang sedang
-  // dipilih di dropdown, supaya Admin langsung tahu Divisi mana yang perlu direset.
-  const linkLupaKodeAkses = useMemo(() => {
-    const pesan = `Pengajuan Reset Kode Akses Branch Manager ${divisi}`;
-    return `https://wa.me/${WA_RESET_KODE_AKSES}?text=${encodeURIComponent(pesan)}`;
-  }, [divisi]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      // Superadmin = akses 100% ke semua divisi, tidak perlu Kode Akses — tinggal pilih divisi.
-      let ok = isSuperadmin;
-      if (!ok) {
-        // Kode Akses milik PRIBADI setiap akun Branch Manager (bukan kode bersama per divisi).
-        // Dicocokkan ke seluruh akun Branch Manager terdaftar pada divisi yang dipilih.
-        const akun = await cariAkunPortalHodByDivisiDanKode(divisi, kode, 'Branch Manager');
-        ok = akun !== null;
-      }
-      if (ok) {
+      if (isSuperadmin) {
         sessionStorage.setItem('akses_branch_manager', '1');
         sessionStorage.setItem('akses_branch_manager_divisi', divisi);
         showToast('success', `Selamat datang, Portal Branch Manager ${divisi}.`);
         navigate(ROUTES.BM_MONITORING);
-      } else {
-        showToast('error', 'Kode akses salah atau belum diatur untuk akun ini.');
+        return;
       }
+
+      const akun = await loginAkunPortal(username, password);
+      if (akun?.role !== 'Branch Manager' || !akun.divisi) {
+        showToast('error', 'Username/Password salah, atau akun ini bukan akun Branch Manager.');
+        return;
+      }
+      sessionStorage.setItem('akses_branch_manager', '1');
+      sessionStorage.setItem('akses_branch_manager_divisi', akun.divisi);
+      simpanSesiAkun({ username: akun.username, email: akun.email });
+      showToast('success', `Login berhasil. Selamat datang, Branch Manager ${akun.divisi}.`);
+      navigate(ROUTES.BM_MONITORING);
     } catch (err) {
-      showToast('error', `Gagal memverifikasi: ${err instanceof Error ? err.message : String(err)}`);
+      showToast('error', `Gagal login: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
@@ -57,37 +55,34 @@ export default function Akses() {
         <h1>Portal Branch Manager</h1>
         <p>
           {isSuperadmin
-            ? 'Superadmin — pilih Divisi yang ingin dikelola.'
-            : 'PT Archimax Architect Indonesia — pilih Divisi dan masukkan Kode Akses pribadi Anda.'}
+            ? 'Superadmin — pilih Divisi/Cabang yang ingin dikelola.'
+            : 'PT Archimax Architect Indonesia — login dengan akun Branch Manager Anda.'}
         </p>
-        <div className="form-field">
-          <label htmlFor="divisiSelect">Divisi</label>
-          <select id="divisiSelect" value={divisi} onChange={(e) => setDivisi(e.target.value)} required>
-            {DAFTAR_DIVISI.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-        </div>
-        {!isSuperadmin && (
+        {isSuperadmin ? (
           <div className="form-field">
-            <label htmlFor="kodeAksesBmInput">Kode Akses</label>
-            <input
-              id="kodeAksesBmInput"
-              type="password"
-              value={kode}
-              onChange={(e) => setKode(e.target.value)}
-              required
-              autoFocus
-            />
+            <label htmlFor="divisiSelectBm">Divisi</label>
+            <select id="divisiSelectBm" value={divisi} onChange={(e) => setDivisi(e.target.value)} required>
+              {DAFTAR_DIVISI.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
           </div>
+        ) : (
+          <>
+            <div className="form-field">
+              <label htmlFor="bmUsername">Username atau Email</label>
+              <input id="bmUsername" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
+            </div>
+            <div className="form-field">
+              <label htmlFor="bmPassword">Password</label>
+              <input id="bmPassword" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </div>
+          </>
         )}
         <button type="submit" className="btn" disabled={loading} style={{ width: '100%' }}>
           {loading ? <Spinner label="Memverifikasi..." /> : 'Masuk'}
         </button>
         {!isSuperadmin && (
           <p style={{ marginTop: 14, textAlign: 'center', fontSize: '0.88rem' }}>
-            Lupa Kode Akses?{' '}
-            <a href={linkLupaKodeAkses} target="_blank" rel="noopener noreferrer">
-              Ajukan reset lewat WhatsApp Admin
-            </a>
+            Lupa Password? Gunakan menu "Lupa Password" di Welcome Page.
           </p>
         )}
       </form>

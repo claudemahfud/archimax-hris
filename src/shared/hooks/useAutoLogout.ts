@@ -5,13 +5,16 @@ import { auth } from '../lib/firebase';
 import { hapusSesiAkun } from '../lib/akunSession';
 import { useToast } from './useToast';
 
-// Kebijakan Auto Logout: berlaku untuk SEMUA role (Superadmin, HRD, HOD) sekaligus.
+// Kebijakan Auto Logout: berlaku untuk SEMUA role (Superadmin, HRD, HOD, Branch Manager) sekaligus.
 // 60 menit tanpa aktivitas (mouse/keyboard/scroll/tap) -> paksa keluar dari semua portal.
 const BATAS_IDLE_MS = 60 * 60 * 1000;
 const INTERVAL_CEK_MS = 30 * 1000;
 const KEY_AKTIVITAS_TERAKHIR = 'aktivitasTerakhirAt';
 
-const KUNCI_SESI = ['akses_superadmin', 'akses_hrd', 'akses_hod', 'akses_hod_divisi'] as const;
+const KUNCI_SESI = [
+  'akses_superadmin', 'akses_hrd', 'akses_hod', 'akses_hod_divisi',
+  'akses_branch_manager', 'akses_branch_manager_divisi',
+] as const;
 
 const EVENT_AKTIVITAS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click'] as const;
 
