@@ -9,6 +9,10 @@ interface Props {
   targets: Karyawan[];
   dinilaiOleh: 'HRD' | 'HOD' | 'Branch Manager';
   onSubmitted?: () => void;
+  // Aspek Hard Skill custom milik akun yang sedang login (lihat halaman "Kelola Parameter KPI").
+  // Kalau diisi (8 item), dipakai menggantikan getAspekHardSkill(divisi) bawaan. Dibiarkan
+  // undefined untuk pemanggil yang belum/tidak punya konsep ini (mis. Penilaian HRD).
+  aspekCustom?: string[];
 }
 
 const SOFT_SKILL_FIELDS: Array<{ key: keyof SoftSkillState; label: string }> = [
@@ -46,7 +50,7 @@ const CATATAN_KOSONG = {
   statusRekomendasi: '', kenaikanSalary: '', training: '', evaluasiBerikutnya: '',
 };
 
-export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
+export function KpiForm({ targets, dinilaiOleh, onSubmitted, aspekCustom }: Props) {
   const { showToast } = useToast();
   const [karyawanId, setKaryawanId] = useState('');
   const [periodeMinggu, setPeriodeMinggu] = useState('');
@@ -68,7 +72,11 @@ export function KpiForm({ targets, dinilaiOleh, onSubmitted }: Props) {
     }).catch(() => undefined);
     return () => { batal = true; };
   }, [target]);
-  const aspekLabel = useMemo(() => (target ? getAspekHardSkill(target.divisi) : []), [target]);
+  const aspekLabel = useMemo(() => {
+    if (!target) return [];
+    if (aspekCustom && aspekCustom.length === 8) return aspekCustom;
+    return getAspekHardSkill(target.divisi);
+  }, [target, aspekCustom]);
   const totalSkor = useMemo(() => hitungTotalSkorHardSkill(aspekValues), [aspekValues]);
   const skorKedisiplinan = useMemo(() => hitungSkorKedisiplinan(soft), [soft]);
 

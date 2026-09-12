@@ -91,6 +91,16 @@ export interface AkunPortal {
   createdAt: number;
 }
 
+// Aspek Hard Skill custom milik SATU akun HOD/Branch Manager (bukan dibagi bareng per Divisi —
+// dua akun yang kebetulan mengelola Divisi yang sama boleh punya set parameter berbeda).
+// Disimpan dengan ID dokumen == uid Firebase Auth akun itu sendiri (lihat firestore.rules).
+export interface ParameterKpiCustom {
+  id: string; // == akunPortal id (uid)
+  divisi: string;
+  aspek: string[]; // selalu tepat JUMLAH_ASPEK_HARDSKILL (8) item, boleh string kosong kalau belum diisi
+  updatedAt: number;
+}
+
 export interface ToastMessage {
   id: string;
   type: 'success' | 'error';

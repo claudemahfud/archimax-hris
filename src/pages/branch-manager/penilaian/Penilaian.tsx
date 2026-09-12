@@ -6,24 +6,32 @@ import { useToast } from '../../../shared/hooks/useToast';
 import { AppShell } from '../../../shared/components/AppShell';
 import { KpiForm } from '../../../shared/components/KpiForm';
 import { Spinner } from '../../../shared/components/Loading';
-import { listKaryawan } from '../../../shared/lib/firestore';
+import { listKaryawan, getParameterKpiCustom } from '../../../shared/lib/firestore';
+import { auth } from '../../../shared/lib/firebase';
 import type { Karyawan } from '../../../shared/types';
-import { IconMonitor, IconClipboardList } from '../../../shared/components/Icons';
+import { IconMonitor, IconClipboardList, IconSettings } from '../../../shared/components/Icons';
 
 const NAV_ITEMS = [
   { to: ROUTES.BM_MONITORING, label: 'Monitoring & Rekap', icon: <IconMonitor /> },
   { to: ROUTES.BM_PENILAIAN, label: 'Form Penilaian KPI', icon: <IconClipboardList /> },
+  { to: ROUTES.BM_PARAMETER_KPI, label: 'Kelola Parameter KPI', icon: <IconSettings /> },
 ];
 
 export default function Penilaian() {
   const { terverifikasi, divisi, keluar } = useAksesBranchManager();
   const { showToast } = useToast();
   const [staffList, setStaffList] = useState<Karyawan[]>([]);
+  const [aspekCustom, setAspekCustom] = useState<string[] | undefined>(undefined);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!terverifikasi) return;
     muat();
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      getParameterKpiCustom(uid).then((p) => setAspekCustom(p?.aspek)).catch(() => undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [terverifikasi, divisi]);
 
   async function muat() {
@@ -49,7 +57,7 @@ export default function Penilaian() {
       ) : staffList.length === 0 ? (
         <p className="card">Belum ada Staff terdaftar di divisi ini. Tambahkan lewat Kelola Karyawan (Master File HRD).</p>
       ) : (
-        <KpiForm targets={staffList} dinilaiOleh="Branch Manager" onSubmitted={muat} />
+        <KpiForm targets={staffList} dinilaiOleh="Branch Manager" onSubmitted={muat} aspekCustom={aspekCustom} />
       )}
     </AppShell>
   );

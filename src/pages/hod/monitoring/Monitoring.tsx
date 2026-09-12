@@ -10,7 +10,7 @@ import { AppShell } from '../../../shared/components/AppShell';
 import { Spinner } from '../../../shared/components/Loading';
 import { listKaryawan, listRiwayatKpi } from '../../../shared/lib/firestore';
 import type { Karyawan, PenilaianKpi } from '../../../shared/types';
-import { IconMonitor, IconClipboardList, IconUsers, IconTrophy } from '../../../shared/components/Icons';
+import { IconMonitor, IconClipboardList, IconUsers, IconTrophy, IconSettings } from '../../../shared/components/Icons';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -19,6 +19,7 @@ interface BarisRekap { karyawan: Karyawan; skorTerakhir: number; skorKedisiplina
 const NAV_ITEMS = [
   { to: ROUTES.HOD_MONITORING, label: 'Monitoring & Rekap', icon: <IconMonitor /> },
   { to: ROUTES.HOD_PENILAIAN, label: 'Form Penilaian KPI', icon: <IconClipboardList /> },
+  { to: ROUTES.HOD_PARAMETER_KPI, label: 'Kelola Parameter KPI', icon: <IconSettings /> },
 ];
 
 export default function Monitoring() {

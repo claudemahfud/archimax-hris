@@ -7,7 +7,8 @@ import {
   sendPasswordResetEmail, updateProfile, type ActionCodeSettings,
 } from 'firebase/auth';
 import { db, auth, secondaryAuth } from './firebase';
-import type { Karyawan, PenilaianKpi, PenilaianKpiForm, CompanyInfo, HasilImportExcel, AkunPortal } from '../types';
+import type { Karyawan, PenilaianKpi, PenilaianKpiForm, CompanyInfo, HasilImportExcel, AkunPortal, ParameterKpiCustom } from '../types';
+import { JUMLAH_ASPEK_HARDSKILL } from '../constants/kpi';
 
 // ============================================================
 // SECTION: Karyawan (Master Data)
@@ -335,17 +336,51 @@ export async function daftarkanAkunPortal(data: {
   await updateProfile(kredensial.user, { displayName: usernameBersih }).catch(() => undefined);
   await signOut(secondaryAuth).catch(() => undefined);
 
-  const ref = await addDoc(collection(db, AKUN_PORTAL_COL), {
+  // PENTING: ID dokumen akunPortal SEKARANG SELALU disamakan dengan uid Firebase Auth akun ini
+  // (bukan lagi auto-ID) — firestore.rules yang baru butuh bisa langsung
+  // get(/databases/$(database)/documents/akunPortal/$(request.auth.uid)) untuk tahu role & divisi
+  // pemilik sesi tanpa perlu query, supaya isolasi privasi antar HOD/Branch Manager bisa
+  // benar-benar ditegakkan di level Firestore (bukan cuma sessionStorage seperti sebelumnya).
+  const ref = doc(db, AKUN_PORTAL_COL, kredensial.user.uid);
+  await setDoc(ref, {
     username: usernameBersih,
     email: emailBersih,
     role: data.role,
     // Setiap akun HOD/Branch Manager baru langsung dibekali Kode Akses (PIN) pribadinya
     // sendiri, dimulai dari nilai default — beda dengan akun lain walau divisinya sama.
     // Superadmin bisa menggantinya kapan saja lewat menu "Kelola Kode Akses".
+    // CATATAN: sejak Login Username+Password jadi satu-satunya gerbang HOD/Branch Manager,
+    // Kode Akses ini TIDAK LAGI dipakai sebagai gerbang login (lihat firestore.rules &
+    // pages/*/akses) — field ini dipertahankan supaya "Kelola Kode Akses HOD" tetap tidak error,
+    // tapi sudah tidak lagi jadi batas keamanan.
     ...(data.role === 'HOD' || data.role === 'Branch Manager' ? { divisi: data.divisi, kodeAkses: KODE_AKSES_HOD_DEFAULT } : {}),
     createdAt: Date.now(),
   });
   return ref.id;
+}
+
+/**
+ * Migrasi diam-diam SATU KALI untuk akun yang didaftarkan SEBELUM perubahan di atas (ID dokumen
+ * akunPortal masih auto-ID lama, bukan uid). Dipanggil dari dalam loginAkunPortal() setiap kali
+ * login sukses: kalau dokumen ber-ID uid belum ada, cari dokumen lama berdasarkan email (masih
+ * bisa dibaca publik seperti sebelumnya), salin isinya ke dokumen baru ber-ID uid, lalu hapus
+ * dokumen lama. Aman dipanggil berkali-kali (idempotent) — begitu sudah bermigrasi, langkah ini
+ * langsung skip di login-login berikutnya. Firestore rules mengizinkan penghapusan dokumen lama
+ * ini KHUSUS kalau emailnya cocok dengan email akun yang sedang login (lihat firestore.rules).
+ */
+async function migrasiAkunPortalKeUid(uid: string, emailBersih: string): Promise<void> {
+  const refBaru = doc(db, AKUN_PORTAL_COL, uid);
+  const sudahAda = await getDoc(refBaru);
+  if (sudahAda.exists()) return;
+
+  const existing = await cariAkunPortalByEmail(emailBersih);
+  if (!existing) return; // seharusnya tidak terjadi (akun ini baru saja berhasil sign-in)
+
+  const { id: _abaikan, ...data } = existing;
+  await setDoc(refBaru, data);
+  if (existing.id !== uid) {
+    await deleteDoc(doc(db, AKUN_PORTAL_COL, existing.id)).catch(() => undefined);
+  }
 }
 
 export async function hapusAkunPortal(id: string): Promise<void> {
@@ -431,8 +466,12 @@ export class SudahAdaEmailSamaError extends Error {
 export async function loginAkunPortal(identitas: string, password: string): Promise<AkunPortal | null> {
   const akun = await cariAkunPortalByIdentitas(identitas);
   if (!akun) return null;
-  await signInWithEmailAndPassword(auth, akun.email, password);
-  return akun;
+  const kredensial = await signInWithEmailAndPassword(auth, akun.email, password);
+  // Lihat migrasiAkunPortalKeUid() di atas — menyamakan ID dokumen akunPortal dengan uid supaya
+  // firestore.rules bisa menegakkan isolasi privasi antar HOD/Branch Manager. Dijalankan setelah
+  // sign-in berhasil (butuh sesi Firebase Auth aktif untuk lolos rules migrasi).
+  await migrasiAkunPortalKeUid(kredensial.user.uid, akun.email).catch(() => undefined);
+  return { ...akun, id: kredensial.user.uid };
 }
 
 // ============================================================
@@ -468,6 +507,32 @@ export async function kirimMagicLinkResetPassword(identitas: string): Promise<st
   if (!akun) throw new Error('Username/Email tidak ditemukan sebagai akun HRD/HOD terdaftar.');
   await sendPasswordResetEmail(auth, akun.email, actionCodeSettingsResetPassword());
   return akun.email;
+}
+
+// ============================================================
+// SECTION: Parameter KPI Custom (Kelola Parameter KPI — per akun HOD/Branch Manager)
+// ============================================================
+// ID dokumen == uid akun (sama seperti akunPortal) supaya firestore.rules bisa menegakkan:
+// satu akun HOD/Branch Manager hanya boleh baca/tulis dokumen paramaternya SENDIRI.
+const PARAMETER_KPI_COL = 'parameterKpiCustom';
+
+export async function getParameterKpiCustom(akunId: string): Promise<ParameterKpiCustom | null> {
+  const snap = await getDoc(doc(db, PARAMETER_KPI_COL, akunId));
+  return snap.exists() ? ({ id: snap.id, ...(snap.data() as Omit<ParameterKpiCustom, 'id'>) }) : null;
+}
+
+export async function setParameterKpiCustom(akunId: string, divisi: string, aspek: string[]): Promise<void> {
+  const bersih = aspek.map((a) => a.trim());
+  if (bersih.length !== JUMLAH_ASPEK_HARDSKILL) {
+    throw new Error(`Aspek Hard Skill harus tepat ${JUMLAH_ASPEK_HARDSKILL} item.`);
+  }
+  if (bersih.some((a) => !a)) throw new Error('Semua label Aspek Hard Skill wajib diisi (tidak boleh kosong).');
+  await setDoc(doc(db, PARAMETER_KPI_COL, akunId), { divisi, aspek: bersih, updatedAt: Date.now() });
+}
+
+/** Kembalikan ke Aspek Hard Skill bawaan Divisi (hapus custom milik akun ini). */
+export async function hapusParameterKpiCustom(akunId: string): Promise<void> {
+  await deleteDoc(doc(db, PARAMETER_KPI_COL, akunId));
 }
 
 // ============================================================
